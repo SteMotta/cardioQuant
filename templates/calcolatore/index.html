@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %} CVS Calc {% endblock %}
+{% block content %}
+    <form method="post" class="flex flex-col gap-1" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="file" name="csv_file" class="file-input file-input-md" id="csv_file" accept=".csv" required/>
+        <input type="submit" class="btn btn-soft" value="Invia">
+    </form>
+    {% if numeri %}
+        <div class="overflow-y-auto">
+        <table class="table">
+        <thead>
+          <tr>
+            <th>Numeri</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for numero in numeri.values %}
+            {% for num in numero.values %}
+            	<tr class="bg-base-200">
+                <td>{{ num }}</td>
+            </tr>
+            {% endfor %}
+        {% endfor %}
+        </tbody>
+        </table>
+        </div>
+    {% endif %}
+
+{% endblock %}
