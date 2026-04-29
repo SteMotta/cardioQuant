@@ -12,6 +12,6 @@ module.exports = {
     ],
     // Opzionale: configurazione temi daisyUI
     daisyui: {
-        themes: ["light", "dark", "cupcake"],
+        themes: ["light", "dark", "cupcake", "nord"],
     },
 }

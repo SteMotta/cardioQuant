@@ -3,25 +3,26 @@
 {% block content %}
     <form method="post" class="flex flex-col gap-1" enctype="multipart/form-data">
         {% csrf_token %}
-        <input type="file" name="csv_file" class="file-input file-input-md" id="csv_file" accept=".csv" required/>
+        <input type="file" name="csv_file" class="file-input file-input-md w-auto" id="csv_file" accept=".csv" required/>
         <input type="submit" class="btn btn-soft" value="Invia">
     </form>
     {% if numeri %}
-        <div class="overflow-y-auto">
+        <div class="overflow-x-auto rounded-box border border-base-content/5 bg-base-100">
         <table class="table">
-        <thead>
-          <tr>
-            <th>Numeri</th>
-          </tr>
-        </thead>
         <tbody>
-        {% for numero in numeri.values %}
-            {% for num in numero.values %}
-            	<tr class="bg-base-200">
+
+
+        {% for key, valori in numeri.items %}
+        <tr class="bg-base-200">
+            <th>{{ key }}</th>
+            {% for num in valori.values %}
+
                 <td>{{ num }}</td>
-            </tr>
+
             {% endfor %}
+        </tr>
         {% endfor %}
+
         </tbody>
         </table>
         </div>

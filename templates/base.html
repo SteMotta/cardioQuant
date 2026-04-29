@@ -1,7 +1,7 @@
 {% load tailwind_tags %}
 {% load static %}
 <!DOCTYPE html>
-<html lang="it" data-theme="corporate"> <head>
+<html lang="it" data-theme="nord"> <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}{% endblock %}</title>
@@ -10,9 +10,9 @@
 
     {% block extra_css %}{% endblock %}
 </head>
-<body class="min-h-screen flex flex-col bg-base-200">
+<body class="min-h-screen flex flex-col bg-base-100">
 
-    <header class="navbar bg-base-100 shadow-md px-4 md:px-8">
+    <header class="navbar bg-base-200 shadow-md px-4 md:px-8">
         <div class="flex-1">
             <a href="/" class="btn btn-ghost normal-case text-xl font-bold text-primary">
                 Progetto Matematica
@@ -32,7 +32,7 @@
         </div>
     </header>
 
-    <main class="flex grow items-center justify-center px-4 py-4">
+    <main class="flex flex-col gap-2 grow items-center justify-center px-4 py-4">
         {% block content %}
         {% endblock %}
     </main>
