@@ -20,9 +20,9 @@
         </div>
 
         <div class="tabs tabs-box transition-discrete m-1 w-fit mx-auto">
-            <input @click="integralType = 'Rectangles'" type="radio" name="my_tabs_1" class="tab" aria-label="Rectangles" checked="checked"/>
-            <input @click="integralType = 'Trapezius'" type="radio" name="my_tabs_1" class="tab" aria-label="Trapezius" />
-            <input @click="integralType = 'Simpson'" type="radio" name="my_tabs_1" class="tab" aria-label="Simpson" />
+            <input @click="integralType = 'Rectangles'" id="rect-button" type="radio" name="my_tabs_1" class="tab" aria-label="Rectangles" checked="checked"/>
+            <input @click="integralType = 'Trapezius'" id="trap-button" type="radio" name="my_tabs_1" class="tab" aria-label="Trapezius" />
+            <input @click="integralType = 'Simpson'" id="simpson-button" type="radio" class="tab" name="my_tabs_1" aria-label="Simpson" />
         </div>
 
         <dialog x-data="{
