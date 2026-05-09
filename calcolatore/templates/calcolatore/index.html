@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %} CVS Calc {% endblock %}
+{% block extrascript %}
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+{% endblock %}
+{% block content %}
+    <div class="" x-data="{ integralType: 'Rectangles' }">
+        <form class="flex flex-col gap-1" enctype="multipart/form-data"
+        hx-post="{% url 'calcolatore:calculate' %}"
+        hx-target="#calc-table"
+        hx-swap="innerHTML">
+            {% csrf_token %}
+            <input type="file" name="csv_file" class="file-input file-input-md w-auto" id="csv_file" accept=".csv" required/>
+            <input type="hidden" name="integral_type" :value="integralType">
+            <input type="submit" class="btn btn-soft" value="Invia">
+        </form>
+
+        <div id="calc-table">
+        </div>
+
+        <div class="tabs tabs-box transition-discrete m-1 w-fit mx-auto">
+            <input @click="integralType = 'Rectangles'" type="radio" name="my_tabs_1" class="tab" aria-label="Rectangles" checked="checked"/>
+            <input @click="integralType = 'Trapezius'" type="radio" name="my_tabs_1" class="tab" aria-label="Trapezius" />
+            <input @click="integralType = 'Simpson'" type="radio" name="my_tabs_1" class="tab" aria-label="Simpson" />
+        </div>
+
+        <dialog x-data="{
+            open: false,
+            message: '',
+            type: 'alert-info',
+            show(msg, t = 'alert-info') {
+                this.message = msg;
+                this.type = t;
+                this.open = true;
+                setTimeout(() => this.open = false, 5000);
+            }
+             }"
+             @notify.window="show($event.detail.message, $event.detail.type)"
+             x-show="open"
+             x-transition
+             class="toast toast-end toast-bottom z-50">
+
+            <div :class="'alert ' + type">
+                <span x-text="message"></span>
+            </div>
+        </dialog>
+    </div>
+
+{% endblock %}
+{% block extra_js %}
+    <script>
+    document.body.addEventListener('htmx:afterRequest', function(evt) {
+        // Se la richiesta è fallita (status >= 400)
+        if (evt.detail.failed) {
+            let errorMsg = "Errore generico";
+
+            // Se il server ha inviato un testo di errore, lo usiamo
+            if (evt.detail.xhr.responseText) {
+                errorMsg = evt.detail.xhr.responseText;
+            }
+
+            window.dispatchEvent(new CustomEvent('notify', {
+                detail: { message: errorMsg, type: 'alert-error' }
+            }));
+        }
+        // Se la richiesta ha successo ma vogliamo mandare un messaggio (es. salvataggio)
+        else if (evt.detail.xhr.status === 200 && evt.detail.xhr.getResponseHeader('HX-Trigger')) {
+            // htmx gestisce HX-Trigger automaticamente, ma qui potresti aggiungere logica extra
+        }
+    });
+    document.body.addEventListener('htmx:afterSwap', function(event) {
+    if (window.MathJax) {
+        window.MathJax.typesetPromise();
+    }
+    });
+    </script>
+{% endblock %}

@@ -1,4 +1,6 @@
 {% load tailwind_tags %}
+{% load django_htmx %}
+{% load socialaccount %}
 {% load static %}
 <!DOCTYPE html>
 <html lang="it" data-theme="nord"> <head>
@@ -7,7 +9,9 @@
     <title>{% block title %}{% endblock %}</title>
 
     {% tailwind_css %}
-
+    {% htmx_script %}
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    {% block extrascript %}{% endblock %}
     {% block extra_css %}{% endblock %}
 </head>
 <body class="min-h-screen flex flex-col bg-base-100">
@@ -19,16 +23,33 @@
             </a>
         </div>
         <div class="flex-none">
-            <ul class="menu menu-horizontal px-1 gap-2">
-                <li><a href="#" class="rounded-lg">Archivio</a></li>
+        {% if user.is_authenticated %}
+            <div class="dropdown dropdown-end">
+              <div tabindex="0" role="button" class="btn btn-circle avatar m-1">
+                  <div class="w-10 rounded-full">
+                      <img src="{{ user.socialaccount_set.all.0.get_avatar_url }}"
+                           alt="Profilo di {{ user.username }}">
+                  </div>
+              </div>
+              <ul tabindex="-1" class="dropdown-content menu bg-base-100 rounded-box z-1 w-auto p-2 shadow-sm">
+                <li><a>List</a></li>
                 <li>
-                    <div class="avatar placeholder">
-                        <div class="bg-neutral text-neutral-content rounded-full w-8">
-                            <span>JD</span>
-                        </div>
-                    </div>
-                </li>
-            </ul>
+                    <form method="post" action="{% url 'account_logout' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="text-error">Logout</button>
+                    </form>
+                    </li>
+              </ul>
+            </div>
+
+        {% else %}
+          <a href="{% url 'account_login' %}"><button class="btn">Login</button></a>
+          <a href="{% url 'account_signup' %}"><button class="btn">Sign-up</button></a>
+        {% endif %}
+        </div>
+
+        <div class="flex-none">
+
         </div>
     </header>
 

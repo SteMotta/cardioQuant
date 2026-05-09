@@ -11,7 +11,6 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from pathlib import Path
-import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -38,9 +37,18 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sites',  # Necessario per allauth
+    'django_htmx',
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google', # Provider specifico per Google
     'tailwind',
     'theme',
 ]
+
+# Specifica l'ID del sito (obbligatorio per django.contrib.sites)
+SITE_ID = 1
 
 TAILWIND_APP_NAME = 'theme'
 
@@ -52,6 +60,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'django_htmx.middleware.HtmxMiddleware',
+    'allauth.account.middleware.AccountMiddleware',
 ]
 
 ROOT_URLCONF = 'progettoMate.urls'
@@ -59,7 +69,8 @@ ROOT_URLCONF = 'progettoMate.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(BASE_DIR, 'templates')],
+        'DIRS': [BASE_DIR / 'templates',
+                 BASE_DIR / 'calcolatore' / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -124,3 +135,14 @@ STATIC_URL = 'static/'
 INTERNAL_IPS = ["127.0.0.1"]
 
 NPM_BIN_PATH = r"C:\Program Files\nodejs\npm.cmd"
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend', # Backend standard di Django
+    'allauth.account.auth_backends.AuthenticationBackend', # Backend di allauth
+]
+
+# Configurazioni suggerite per allauth
+ACCOUNT_LOGIN_METHODS = {'email'}
+ACCOUNT_SIGNUP_FIELDS = ['email*']
+ACCOUNT_EMAIL_VERIFICATION = 'optional' # Puoi impostarlo su 'mandatory' in produzione
+LOGIN_REDIRECT_URL = '/' # Dove mandare l'utente dopo il login
