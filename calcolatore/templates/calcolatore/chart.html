@@ -2,10 +2,10 @@
 <div class="overflow-x-auto rounded-box border border-base-content/10 bg-base-200 mt-3">
     <div class="flex justify-center items-center p-6">
         <div id="mioGraficoLineare" class="w-auto aspect-video h-80"></div>
-        <span class="font-bold text-3xl inline">$$I_R \approx h \sum_{i=0}^{n-1} y_i$$</span>
-        <span class="font-bold text-3xl">=</span>
-        <span class="font-bold text-3xl" id="integral-result"></span>
-        <span class="font-bold text-3xl">mV·s</span>
+        <span class="font-bold text-2xl inline" id="integral-formula">$$I_R \approx h \sum_{i=0}^{n-1} y_i$$</span>
+        <span class="font-bold text-2xl">=</span>
+        <span class="font-bold text-2xl" id="integral-result"></span>
+        <span class="font-bold text-2xl">mV·s</span>
     </div>
 </div>
 
@@ -18,6 +18,11 @@
       const traps = JSON.parse('{{ trapezius|safe }}');
       const simpson = JSON.parse('{{ simpson|safe }}');
       const curve = {{ curve|safe }};
+      const formula = {
+          Rectangles: "$$I_R \\approx h \\sum_{i=0}^{n-1} y_i$$",
+          Trapezius: "$$I_T \\approx \\frac{h}{2} \\left[ y_0 + 2 \\sum_{i=1}^{n-1} y_i + y_n \\right]$$",
+          Simpson: "$$I_S \\approx \\frac{h}{3} \\left[ y_0 + 4 \\sum_{\\text{dispari}} y_i + 2 \\sum_{\\text{pari}} y_i + y_n \\right]$$"
+      };
       const integrals = {
           Rectangles: {{ rects_result }},
           Trapezius: {{ trapezius_result }},
@@ -140,7 +145,9 @@
         myChart.setOption({
           series: [{ id: 'shapes', ...config[method] }]
         });
+        document.getElementById('integral-formula').textContent = formula[method];
         document.getElementById('integral-result').textContent = integrals[method].toFixed(4);
+        window.MathJax.typesetPromise();
       }
 
       setMethod('{{ requested_method }}');

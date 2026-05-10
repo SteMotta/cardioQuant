@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}ECG Example{% endblock %}
+{% block extrascript %}
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+{% endblock %}
+
+{% block content %}
+<div x-data="{ integralType: 'Rectangles' }"
+        class="flex flex-col gap-1 items-center">
+
+    <button hx-post="{% url "calcolatore:calculate_example" %}"
+            hx-target="#calc-chart"
+            hx-swap="innerHTML"
+            :hx-vals="JSON.stringify({ integral_type: integralType })"
+            class="btn btn-xs sm:btn-sm md:btn-md lg:btn-lg xl:btn-xl w-fit mx-auto">Load Example</button>
+
+    <div id="calc-chart">
+    </div>
+
+    <div class="tabs tabs-box transition-discrete m-1 w-fit mx-auto">
+        <input @click="integralType = 'Rectangles'" id="rect-button" type="radio" name="my_tabs_1" class="tab" aria-label="Rectangles" checked="checked"/>
+        <input @click="integralType = 'Trapezius'" id="trap-button" type="radio" name="my_tabs_1" class="tab" aria-label="Trapezius" />
+        <input @click="integralType = 'Simpson'" id="simpson-button" type="radio" class="tab" name="my_tabs_1" aria-label="Simpson" />
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+    <script>
+    document.body.addEventListener('htmx:afterRequest', function(evt) {
+        // Se la richiesta è fallita (status >= 400)
+        if (evt.detail.failed) {
+            let errorMsg = "Errore generico";
+
+            // Se il server ha inviato un testo di errore, lo usiamo
+            if (evt.detail.xhr.responseText) {
+                errorMsg = evt.detail.xhr.responseText;
+            }
+
+            window.dispatchEvent(new CustomEvent('notify', {
+                detail: { message: errorMsg, type: 'alert-error' }
+            }));
+        }
+        // Se la richiesta ha successo ma vogliamo mandare un messaggio (es. salvataggio)
+        else if (evt.detail.xhr.status === 200 && evt.detail.xhr.getResponseHeader('HX-Trigger')) {
+            // htmx gestisce HX-Trigger automaticamente, ma qui potresti aggiungere logica extra
+        }
+    });
+    document.body.addEventListener('htmx:afterSwap', function(event) {
+    if (window.MathJax) {
+        window.MathJax.typesetPromise();
+    }
+    });
+    </script>
+{% endblock %}

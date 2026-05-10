@@ -8,7 +8,7 @@
     <div class="" x-data="{ integralType: 'Rectangles' }">
         <form class="flex flex-col gap-1" enctype="multipart/form-data"
         hx-post="{% url 'calcolatore:calculate' %}"
-        hx-target="#calc-table"
+        hx-target="#calc-chart"
         hx-swap="innerHTML">
             {% csrf_token %}
             <input type="file" name="csv_file" class="file-input file-input-md w-auto" id="csv_file" accept=".csv" required/>
@@ -16,7 +16,7 @@
             <input type="submit" class="btn btn-soft" value="Invia">
         </form>
 
-        <div id="calc-table">
+        <div id="calc-chart">
         </div>
 
         <div class="tabs tabs-box transition-discrete m-1 w-fit mx-auto">
@@ -65,8 +65,10 @@
             }));
         }
         // Se la richiesta ha successo ma vogliamo mandare un messaggio (es. salvataggio)
-        else if (evt.detail.xhr.status === 200 && evt.detail.xhr.getResponseHeader('HX-Trigger')) {
-            // htmx gestisce HX-Trigger automaticamente, ma qui potresti aggiungere logica extra
+        else if (evt.detail.xhr.status === 201) {
+            window.dispatchEvent(new CustomEvent('notify', {
+                detail: { message: "Calcution saved!", type: 'alert-success' }
+            }));
         }
     });
     document.body.addEventListener('htmx:afterSwap', function(event) {

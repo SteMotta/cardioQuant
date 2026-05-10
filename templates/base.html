@@ -14,14 +14,28 @@
     {% block extrascript %}{% endblock %}
     {% block extra_css %}{% endblock %}
 </head>
-<body class="min-h-screen flex flex-col bg-base-100">
+<body class="min-h-screen flex flex-col bg-base-100" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
 
     <header class="navbar bg-base-200 shadow-md px-4 md:px-8">
-        <div class="flex-1">
-            <a href="/" class="btn btn-ghost normal-case text-xl font-bold text-primary">
+        <div class="flex-1 flex items-center gap-2">
+            <a href="/" class="btn btn-ghost normal-case text-2xl font-bold text-primary">
                 Progetto Matematica
             </a>
+
+            <div class="dropdown">
+                <div tabindex="0" role="button" class="btn btn-ghost btn-sm text-lg">
+                    Calculator
+                    <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </div>
+                <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-10 w-52 p-2 shadow-md">
+                    <li><a href="{% url "calcolatore:example" %}">Example</a></li>
+                    <li><a href="{% url "calcolatore:index" %}">Input File</a></li>
+                </ul>
+            </div>
         </div>
+
         <div class="flex-none">
         {% if user.is_authenticated %}
             <div class="dropdown dropdown-end">
@@ -38,18 +52,13 @@
                         {% csrf_token %}
                         <button type="submit" class="text-error">Logout</button>
                     </form>
-                    </li>
+                </li>
               </ul>
             </div>
-
         {% else %}
           <a href="{% url 'account_login' %}"><button class="btn">Login</button></a>
           <a href="{% url 'account_signup' %}"><button class="btn">Sign-up</button></a>
         {% endif %}
-        </div>
-
-        <div class="flex-none">
-
         </div>
     </header>
 
@@ -60,7 +69,7 @@
 
     <footer class="footer footer-center p-4 bg-base-300 text-base-content border-t border-base-content/10">
         <aside>
-            <p>Copyright © {% now "Y" %} - Sviluppato con Django, Tailwind e daisyUI</p>
+            <p>Copyright © {% now "Y" %} - Devoloped with ❤️</p>
         </aside>
     </footer>
 

@@ -3,18 +3,35 @@ import json
 
 from django.shortcuts import render
 import pandas as pd
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_GET
+from django.conf import settings
 from django.http import HttpResponse
 import numpy as np
+from calcolatore.models import Dataset, Calculation
 
 def index(request):
     return render(request, "calcolatore/index.html")
 
-@require_POST
-def calculate(request):
-    csv_file = request.FILES['csv_file'].read()
-    print(request.POST.get('integral_type'))
+def example(request):
+    return render(request, "calcolatore/example.html")
 
+def _get_columns(csv_data):
+    time_column = ""
+    voltage_column = ""
+    counter = 0
+    for i, colonna in enumerate(csv_data.columns):
+        if not csv_data[colonna].is_monotonic_increasing:
+            counter += 1
+        else:
+            time_column = colonna
+            voltage_column = csv_data.columns[0] if i == 1 else csv_data.columns[1]
+
+    return [time_column, voltage_column] if counter == 1 else None
+
+def _get_time_step(csv_data, time_column):
+    return csv_data[time_column][1]
+
+def _csv_check(csv_file):
     try:
         csv_data = pd.read_csv(io.BytesIO(csv_file), on_bad_lines='error')
     except pd.errors.ParserError:
@@ -23,14 +40,12 @@ def calculate(request):
         return HttpResponse(status=422, content="Error: CSV file empty")
     if len(csv_data.columns) != 2:
         return HttpResponse(status=422, content="Error: Number of columns not equal to 2")
-    if len(csv_data.columns[0]) < 2:
-        return HttpResponse(status=422, content="Error: Number of rows not greater than 1")
     if csv_data.isnull().values.any():
         # Opzionale: puoi identificare dove sono gli errori
         colonne_con_nan = csv_data.columns[csv_data.isnull().any()].tolist()
-        return HttpResponse(status=422, content=f"Errore: CSV doesn'csv_data[time_column] have value in this columns: {colonne_con_nan}")
-        # 2. Controlla che tutti i valori siano maggiori di 0
-        # (Assumendo che siano tutte colonne numeriche)
+        return HttpResponse(status=422, content=f"Errore: CSV doesn't have value in this columns: {colonne_con_nan}")
+    if len(csv_data.columns[0]) < 2:
+        return HttpResponse(status=422, content="Error: Number of rows not greater than 1")
 
     for column in csv_data.columns:
         csv_data[column] = pd.to_numeric(csv_data[column], errors='coerce')
@@ -48,16 +63,68 @@ def calculate(request):
             time_column = colonna
             voltage_column = csv_data.columns[0] if i == 1 else csv_data.columns[1]
 
-    if counter == 2:
-        return HttpResponse(status=422, content=f"Errore: CSV doesn'csv_data[time_column] have a correct time column")
+    if counter == 2 or counter == 0:
+        return HttpResponse(status=422, content=f"Errore: CSV doesn't have a valid time column")
 
     if not _is_step(csv_data, time_column):
-        return HttpResponse(status=422, content=f"Errore: time column isn'csv_data[time_column] in constant step")
+        return HttpResponse(status=422, content=f"Errore: time column isn't in constant step")
     time_step = csv_data[time_column][1]
 
     if csv_data[voltage_column][len(csv_data[voltage_column]) - 1] != 0:
-        return HttpResponse(status=422, content=f"Errore: voltage column last value isn'csv_data[time_column] 0")
+        return HttpResponse(status=422, content=f"Errore: voltage column last value isn't 0")
 
+    return [csv_data, time_column, voltage_column, time_step]
+@require_POST
+def calculate(request):
+    csv_file = request.FILES['csv_file'].read()
+
+    csv_checked = _csv_check(csv_file)
+    if isinstance(csv_checked, HttpResponse):
+        return csv_checked
+    csv_data, time_column, voltage_column, time_step = csv_checked
+
+    curve = _get_curve(csv_data, voltage_column, time_column)
+    rects, rects_result = _rectangle_method(csv_data, time_step, voltage_column, time_column)
+    trapezius, trapezius_result = _trapezius_method(csv_data, time_step, voltage_column, time_column)
+    simpson, simpson_result = _simpson_method(csv_data, time_step, voltage_column, time_column)
+    status = 200
+
+    if request.user.is_authenticated:
+        dataset = Dataset.objects.create(
+            user = request.user,
+            csv_name = request.FILES['csv_file'].name,
+            step = time_step,
+            time_values = csv_data[time_column].tolist(),
+            voltage_values = csv_data[voltage_column].tolist()
+        )
+        Calculation.objects.create(
+            dataset=dataset,
+            rects = rects,
+            trapezius = trapezius,
+            simpson = simpson,
+            result_rectangles = rects_result,
+            result_trapezius = trapezius_result,
+            result_simpson = simpson_result
+        )
+        status = 201
+
+    context = {'curve': json.dumps(curve),
+               'rects_result': rects_result,
+               'rects': json.dumps(rects),
+               'trapezius_result': trapezius_result,
+               'trapezius': json.dumps(trapezius),
+               'simpson_result': simpson_result,
+               'simpson': json.dumps(simpson),
+               'requested_method': request.POST.get('integral_type')
+               }
+    return render(request, "calcolatore/chart.html", context, status=status)
+
+@require_POST
+def calculate_example(request):
+    path = settings.BASE_DIR / 'calcolatore' / 'data' / 'ecg_example.csv'
+    csv_data = pd.read_csv(path)
+    time_column, voltage_column  = _get_columns(csv_data)
+    time_step = _get_time_step(csv_data, time_column)
     curve = _get_curve(csv_data, voltage_column, time_column)
     rects, rects_result = _rectangle_method(csv_data, time_step, voltage_column, time_column)
     trapezius, trapezius_result = _trapezius_method(csv_data, time_step, voltage_column, time_column)

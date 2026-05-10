@@ -43,8 +43,10 @@ INSTALLED_APPS = [
     'allauth.account',
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google', # Provider specifico per Google
+    'django_extensions',
     'tailwind',
     'theme',
+    'calcolatore',
 ]
 
 # Specifica l'ID del sito (obbligatorio per django.contrib.sites)
