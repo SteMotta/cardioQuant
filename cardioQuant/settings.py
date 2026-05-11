@@ -49,7 +49,7 @@ INSTALLED_APPS = [
 ]
 
 # Specifica l'ID del sito (obbligatorio per django.contrib.sites)
-SITE_ID = 1
+SITE_ID = int(os.environ.get('SITE_ID', 1))
 
 TAILWIND_APP_NAME = 'theme'
 
@@ -128,7 +128,6 @@ USE_I18N = True
 
 USE_TZ = True
 
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
@@ -148,6 +147,10 @@ SOCIALACCOUNT_PROVIDERS = {
     'google': {
         'SCOPE': ['profile', 'email'],
         'AUTH_PARAMS': {'access_type': 'online'},
+        'APP': {
+            'client_id': os.environ.get('GOOGLE_CLIENT_ID'),
+            'secret': os.environ.get('GOOGLE_CLIENT_SECRET'),
+        }
     }
 }
 

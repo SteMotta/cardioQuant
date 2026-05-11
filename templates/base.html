@@ -13,7 +13,8 @@
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
     {% block extrascript %}{% endblock %}
     <link rel="stylesheet" href="{% static 'css/dist/styles.css' %}">
-    <link rel="icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'favicon-16x16.png' %}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'favicon-32x32.png' %}">
     {% block extra_css %}{% endblock %}
 </head>
 <body class="min-h-screen flex flex-col bg-base-100" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
@@ -21,7 +22,7 @@
     <header class="navbar bg-base-200 shadow-md px-4 md:px-8">
         <div class="flex-1 flex items-center gap-2">
             <a href="/" class="btn btn-ghost normal-case text-2xl font-bold text-primary">
-                CardioQuant
+                <img src="{% static "icon.ico" %}" alt="CardioQuant" width="40" height="40">CardioQuant
             </a>
 
             <div class="dropdown">
