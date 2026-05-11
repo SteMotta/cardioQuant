@@ -9,4 +9,5 @@ urlpatterns = [
     path('example', example, name='example'),
     path('calculate_example', calculate_example, name='calculate_example'),
     path('dashboard', dashboard, name='dashboard'),
+    path('delete_dataset/<int:pk>', delete_dataset, name='delete_dataset')
 ]

@@ -5,12 +5,44 @@
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 {% endblock %}
 {% block content %}
-    <div class="" x-data="{ integralType: 'Rectangles' }">
+    <div class=""
+         x-data="{ integralType: 'Rectangles',
+          feedback: { show: false, message: '', type: '' }}">
         <form class="flex flex-col gap-1" enctype="multipart/form-data"
         hx-post="{% url 'calculator:calculate' %}"
         hx-target="#calc-chart"
         hx-swap="innerHTML">
             {% csrf_token %}
+
+            <template x-if="feedback.show">
+                <div :class="'alert mb-4 shadow-lg flex items-center justify-start ' + (feedback.type === 'success' ? 'alert-success' : 'alert-warning')"
+                     x-transition>
+
+                    <div class="flex items-center gap-2">
+                        <template x-if="feedback.type === 'success'">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </template>
+
+                        <template x-if="feedback.type === 'error'">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </template>
+
+                        <span class="font-medium" x-text="feedback.message"></span>
+                    </div>
+
+                    <div class="ml-auto">
+                        <button type="button"
+                                class="btn btn-ghost btn-sm bg-base-100/20 hover:bg-base-100/40 border-none"
+                                @click="feedback.show = false">
+                            Chiudi
+                        </button>
+                    </div>
+                </div>
+            </template>
             <input type="file" name="csv_file" class="file-input file-input-md w-auto" id="csv_file" accept=".csv" required/>
             <input type="hidden" name="integral_type" :value="integralType">
             <input type="submit" class="btn btn-soft" value="Send">
@@ -71,6 +103,47 @@
             }));
         }
     });
+    document.body.addEventListener('htmx:afterRequest', function(evt) {
+        // Cerchiamo l'elemento Alpine più vicino che contiene lo stato feedback
+        // In questo caso, il div principale del tuo componente
+        const alpineNode = document.querySelector('[x-data*="feedback"]');
+        if (!alpineNode) return;
+
+        const alpineData = Alpine.$data(alpineNode);
+
+        if (evt.detail.failed) {
+            // Caso Errore (Rosso)
+            let errorMsg = evt.detail.xhr.responseText || "Errore durante il calcolo";
+
+            alpineData.feedback.message = errorMsg;
+            alpineData.feedback.type = 'error';
+            alpineData.feedback.show = true;
+
+        } else if (evt.detail.xhr.status === 200 || evt.detail.xhr.status === 201) {
+            // Caso Successo (Verde)
+            // ESEMPIO: Leggi un header custom dal server per il commento
+            // Se nel Django View metti response['HX-Trigger'] = '{"commento": "Ottimo lavoro!"}'
+            const average = parseFloat(evt.detail.xhr.getResponseHeader('X-Average'));
+            let message = ''
+            let type = ''
+
+            if (average >= 0.05 && average <= 0.20) {
+                message = "Physiological Value (Value within normal range)";
+                type = 'success';
+
+            } else if (average < 0.05) {
+                message = "AT RISK (Excessively low voltage) - Consult a Physician";
+                type = 'warning';
+            } else {
+                message = "AT RISK (Suspected Hypertrophy or conduction abnormality) – Consult a Physician";
+                type = 'warning';
+            }
+            alpineData.feedback.message = message;
+            alpineData.feedback.type = type;
+            alpineData.feedback.show = true;
+        }
+    });
+
     document.body.addEventListener('htmx:afterSwap', function(event) {
     if (window.MathJax) {
         window.MathJax.typesetPromise();

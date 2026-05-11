@@ -33,19 +33,57 @@
                  hx-post="{% url 'calculator:calculate' calc.id %}"
                  hx-target="#calc-chart-{{ calc.id }}"
                  hx-swap="innerHTML"
+                 hx-trigger="click once"
                  hx-vals='{"integral_type": "Rectangles"}' />
 
           <label for="collapse-toggle-{{ calc.id }}" class="fixed inset-0 hidden peer-checked:block"></label>
 
-          <div class="collapse-title font-semibold flex justify-between">
-            {{ calc.csv_name }}
-            <span>{{ calc.created_at }}</span>
+          <div class="collapse-title font-semibold flex justify-between items-center group">
+            <span>{{ calc.csv_name }}</span>
+
+            <div class="flex items-center gap-6 relative z-10">
+                <span class="text-base opacity-75 font-normal font-semibold">{{ calc.created_at|date:"H:i" }}</span>
+
+                <button
+                    class="btn btn-error btn-sm btn-square text-white hover:bg-red-700 transition-opacity"
+                    hx-delete="{% url 'calculator:delete_dataset' calc.id %}"
+                    hx-on:delete-collapse="this.closest('.collapse').remove()"
+                    hx-confirm="Sei sicuro di voler eliminare questo calcolo?"
+                    @click.stop
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                </button>
+            </div>
           </div>
 
-          <div class="collapse-content text-sm z-1">
+          <div class="collapse-content text-sm z-1" x-data="{feedback: { show: false, message: '', type: '' }}">
+              <template x-if="feedback.show">
+                    <div :class="'alert mb-4 shadow-lg flex items-center justify-start ' + (feedback.type === 'success' ? 'alert-success' : 'alert-warning')"
+                         x-transition>
+
+                        <div class="flex items-center gap-2">
+                            <template x-if="feedback.type === 'success'">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </template>
+
+                            <template x-if="feedback.type === 'error'">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </template>
+
+                            <span class="font-medium" x-text="feedback.message"></span>
+                        </div>
+                    </div>
+                </template>
+
             <div id="calc-chart-{{ calc.id }}"></div>
 
-            <div class="tabs tabs-box transition-discrete m-1 w-fit mx-auto">
+            <div class="tabs tabs-box transition-discrete mt-3 w-fit mx-auto">
               <input type="radio" name="tabs-{{ calc.id }}" class="tab" id="rect-button-{{ calc.id }}"
                      aria-label="Rectangles"
                      hx-post="{% url 'calculator:calculate' calc.id %}"
@@ -71,7 +109,97 @@
 
       {% endfor %}
       {% endfor %}
+    <dialog x-data="{
+            open: false,
+            message: '',
+            type: 'alert-info',
+            show(msg, t = 'alert-info') {
+                this.message = msg;
+                this.type = t;
+                this.open = true;
+                setTimeout(() => this.open = false, 5000);
+            }
+             }"
+             @notify.window="show($event.detail.message, $event.detail.type)"
+             x-show="open"
+             x-transition
+             class="toast toast-end toast-bottom z-50">
+
+            <div :class="'alert ' + type">
+                <span x-text="message"></span>
+            </div>
+        </dialog>
     </div>
 
 
+{% endblock %}
+{% block extra_js %}
+    <script>
+    document.body.addEventListener('htmx:afterRequest', function(evt) {
+        // Se la richiesta è fallita (status >= 400)
+        if (evt.detail.failed) {
+            let errorMsg = "Errore generico";
+
+            // Se il server ha inviato un testo di errore, lo usiamo
+            if (evt.detail.xhr.responseText) {
+                errorMsg = evt.detail.xhr.responseText;
+            }
+
+            window.dispatchEvent(new CustomEvent('notify', {
+                detail: { message: errorMsg, type: 'alert-error' }
+            }));
+        }
+        // Se la richiesta ha successo ma vogliamo mandare un messaggio (es. salvataggio)
+        else if (evt.detail.xhr.status === 204) {
+            window.dispatchEvent(new CustomEvent('notify', {
+                detail: { message: "Dataset eliminated!", type: 'alert-success' }
+            }));
+        }
+    });
+    document.body.addEventListener('htmx:afterRequest', function(evt) {
+        // 1. Troviamo l'elemento che ha scatenato HTMX (il checkbox o il radio button)
+        const triggerEl = evt.detail.elt;
+
+        // 2. Cerchiamo il wrapper Alpine risalendo l'albero DOM
+        const collapseContainer = triggerEl.closest('.collapse');
+        if (!collapseContainer) return;
+
+        const alpineNode = collapseContainer.querySelector('[x-data*="feedback"]');
+        if (!alpineNode) return;
+
+        const alpineData = Alpine.$data(alpineNode);
+
+        if (evt.detail.failed) {
+            // Caso Errore (Rosso)
+            let errorMsg = evt.detail.xhr.responseText || "Errore durante il calcolo";
+
+            alpineData.feedback.message = errorMsg;
+            alpineData.feedback.type = 'error';
+            alpineData.feedback.show = true;
+
+        } else if (evt.detail.xhr.status === 200 || evt.detail.xhr.status === 201) {
+            // Caso Successo (Verde)
+            // ESEMPIO: Leggi un header custom dal server per il commento
+            // Se nel Django View metti response['HX-Trigger'] = '{"commento": "Ottimo lavoro!"}'
+            const average = parseFloat(evt.detail.xhr.getResponseHeader('X-Average'));
+            let message = ''
+            let type = ''
+
+            if (average >= 0.05 && average <= 0.20) {
+                message = "Physiological Value (Value within normal range)";
+                type = 'success';
+
+            } else if (average < 0.05) {
+                message = "AT RISK (Excessively low voltage) - Consult a Physician";
+                type = 'warning';
+            } else {
+                message = "AT RISK (Suspected Hypertrophy or conduction abnormality) – Consult a Physician";
+                type = 'warning';
+            }
+            alpineData.feedback.message = message;
+            alpineData.feedback.type = type;
+            alpineData.feedback.show = true;
+        }
+    });
+    </script>
 {% endblock %}

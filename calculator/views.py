@@ -3,9 +3,9 @@ import json
 from itertools import groupby
 
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 import pandas as pd
-from django.views.decorators.http import require_POST, require_GET
+from django.views.decorators.http import require_POST, require_GET, require_http_methods
 from django.conf import settings
 from django.http import HttpResponse
 import numpy as np
@@ -87,6 +87,7 @@ def _csv_check(csv_file):
         return HttpResponse(status=422, content=f"Error: voltage column last value isn't 0")
 
     return [csv_data, time_column, voltage_column, time_step]
+
 @require_POST
 def calculate(request, pk=None):
     context = {}
@@ -156,7 +157,13 @@ def calculate(request, pk=None):
                    'simpson': json.dumps(simpson),
                    'requested_method': request.POST.get('integral_type')
                }
-    return render(request, "calculator/chart.html", context, status=status)
+
+    response = render(request, "calculator/chart.html", context, status=status)
+    average = _get_average_result(context['rects_result'], context['trapezius_result'], context['simpson_result'])
+    response['X-Average'] = average
+
+    return response
+
 
 @require_POST
 def calculate_example(request):
@@ -179,7 +186,20 @@ def calculate_example(request):
                'requested_method': request.POST.get('integral_type')
                }
 
-    return render(request, "calculator/chart.html", context)
+    response = render(request, "calculator/chart.html", context)
+    average = _get_average_result(context['rects_result'], context['trapezius_result'], context['simpson_result'])
+    response['X-Average'] = average
+
+    return response
+
+@login_required
+@require_http_methods(['DELETE'])
+def delete_dataset(request, pk):
+    dataset = get_object_or_404(Dataset, pk=pk, user=request.user)
+    dataset.delete()
+    response = HttpResponse(status=204)
+    response['HX-Trigger'] = 'delete-collapse'
+    return response
 
 def _is_step(data_frame, time_column):
     step = data_frame[time_column][1]
@@ -193,27 +213,34 @@ def _is_step(data_frame, time_column):
     return valid
 
 def _get_curve(csv_data, voltage_column, time_column):
-    return [[csv_data[time_column][i], csv_data[voltage_column][i]] for i in range(len(csv_data[time_column]))]
+    T = csv_data[time_column].to_numpy()
+    V = csv_data[voltage_column].to_numpy()
+    return np.column_stack([T, V]).tolist()
 
 def _rectangle_method(csv_data, time_step, voltage_column, time_column):
-    n = len(csv_data[time_column]) - 1
-    rects = [[csv_data[time_column][i], csv_data[time_column][i + 1], csv_data[voltage_column][i]] for i in range(n)]
-    voltage_total = csv_data[voltage_column].sum()
-    return rects, time_step * voltage_total
+    T = csv_data[time_column].to_numpy()
+    V = csv_data[voltage_column].to_numpy()
+    rects  = np.column_stack([T[:-1], T[1:], V[:-1]]).tolist()
+    # Regola sinistra: somma solo V[0..n-1], non V[n]
+    result = time_step * V[:-1].sum()
+    return rects, result
 
 def _trapezius_method(csv_data, time_step, voltage_column, time_column):
-    n = len(csv_data[time_column]) - 1
-    traps = [[csv_data[time_column][i], csv_data[time_column][i + 1], csv_data[voltage_column][i], csv_data[voltage_column][i + 1]] for i in range(n)]
-    voltage_total = csv_data[voltage_column].sum()
-    return traps, time_step/2 * (2*voltage_total)
+    T = csv_data[time_column].to_numpy()
+    V = csv_data[voltage_column].to_numpy()
+    traps  = np.column_stack([T[:-1], T[1:], V[:-1], V[1:]]).tolist()
+    # Formula corretta: h/2 * (V[0] + 2*V[1..n-1] + V[n])
+    result = time_step / 2 * (V[0] + 2 * V[1:-1].sum() + V[-1])
+    return traps, result
 
 def _simpson_method(csv_data, time_step, voltage_column, time_column):
-    n = len(csv_data[time_column]) - 1
-    simpson = [[csv_data[time_column][i], csv_data[time_column][i + 1], csv_data[time_column][i + 2], csv_data[voltage_column][i], csv_data[voltage_column][i + 1], csv_data[voltage_column][i + 2]] for i in range(0, n, 2)]
-    even_voltage_total = 0
-    for i in range(0, n, 2):
-        even_voltage_total += csv_data[voltage_column][i]
-    odd_voltage_total = 0
-    for i in range(1, n, 2):
-        odd_voltage_total += csv_data[voltage_column][i]
-    return simpson, time_step/3 * (2*even_voltage_total + 4*odd_voltage_total)
+    T = csv_data[time_column].to_numpy()
+    V = csv_data[voltage_column].to_numpy()
+    simpson = np.column_stack([T[0:-2:2], T[1:-1:2], T[2::2],
+                               V[0:-2:2], V[1:-1:2], V[2::2]]).tolist()
+    # Formula corretta: h/3 * (V[0] + 4*dispari + 2*pari_interni + V[n])
+    result = time_step / 3 * (V[0] + 4 * V[1:-1:2].sum() + 2 * V[2:-2:2].sum() + V[-1])
+    return simpson, result
+
+def _get_average_result(rects_result, traps_result, simpson_result):
+    return round(np.mean([rects_result, traps_result, simpson_result]), 4)
