@@ -24,8 +24,7 @@ SECRET_KEY = 'django-insecure-uzh)o9n6)vamgh_x7^4$g==!&9)x&z@_6^g7)i4#l7v!b8(j$@
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
-
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['cardioquant.onrender.com', 'localhost', '127.0.0.1']
 
 
 # Application definition
