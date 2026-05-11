@@ -1527,6 +1527,32 @@
   .mx-auto {
     margin-inline: auto;
   }
+  @layer daisyui.l1.l2 {
+    .file-input-ghost {
+      background-color: transparent;
+      transition: background-color 0.2s;
+      box-shadow: none;
+      border-color: #0000;
+    }
+    .file-input-ghost::file-selector-button {
+      margin-inline-start: calc(0.25rem * 0);
+      margin-inline-end: calc(0.25rem * 4);
+      height: 100%;
+      cursor: pointer;
+      padding-inline: calc(0.25rem * 4);
+      webkit-user-select: none;
+      user-select: none;
+      margin-block: 0;
+      border-start-end-radius: calc(var(--join-ss, var(--radius-field) - var(--border)));
+      border-end-end-radius: calc(var(--join-es, var(--radius-field) - var(--border)));
+    }
+    .file-input-ghost:focus, .file-input-ghost:focus-within {
+      background-color: var(--color-base-100);
+      color: var(--color-base-content);
+      border-color: #0000;
+      box-shadow: none;
+    }
+  }
   .mt-3 {
     margin-top: calc(var(--spacing) * 3);
   }
@@ -1544,15 +1570,6 @@
   }
   .mb-7 {
     margin-bottom: calc(var(--spacing) * 7);
-  }
-  .mb-8 {
-    margin-bottom: calc(var(--spacing) * 8);
-  }
-  .mb-9 {
-    margin-bottom: calc(var(--spacing) * 9);
-  }
-  .mb-10 {
-    margin-bottom: calc(var(--spacing) * 10);
   }
   .ml-1 {
     margin-left: calc(var(--spacing) * 1);

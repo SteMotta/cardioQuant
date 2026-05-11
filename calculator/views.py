@@ -1,7 +1,7 @@
 import io
 import json
 from itertools import groupby
-
+from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, get_object_or_404
 import pandas as pd
@@ -22,7 +22,7 @@ def dashboard(request):
     datasets = Dataset.objects.filter(user=request.user).order_by('-created_at')
     grouped = [
         (day, list(items))
-        for day, items in groupby(datasets, key=lambda d: d.created_at.date())
+        for day, items in groupby(datasets, key=lambda d: timezone.localtime(d.created_at).date())
     ]
     context = { 'grouped': grouped }
 
