@@ -1,11 +1,19 @@
 <!-- Contenitore del grafico stile DaisyUI -->
 <div class="overflow-x-auto rounded-box border border-base-content/10 bg-base-200 mt-3">
     <div class="flex justify-center items-center p-6">
-        <div id="mioGraficoLineare" class="w-auto aspect-video h-80"></div>
-        <span class="font-bold text-2xl inline" id="integral-formula">$$I_R \approx h \sum_{i=0}^{n-1} y_i$$</span>
-        <span class="font-bold text-2xl">=</span>
-        <span class="font-bold text-2xl" id="integral-result"></span>
-        <span class="font-bold text-2xl">mV·s</span>
+        {% if calc_id %}
+            <div id="chart-{{ calc_id }}" class="w-auto aspect-video h-80"></div>
+            <span class="font-bold text-2xl inline" id="formula-{{ calc_id }}">$$I_R \approx h \sum_{i=0}^{n-1} y_i$$</span>
+            <span class="font-bold text-2xl">=</span>
+            <span class="font-bold text-2xl" id="result-{{ calc_id }}"></span>
+            <span class="font-bold text-2xl">mV·s</span>
+        {% else %}
+            <div id="chart" class="w-auto aspect-video h-80"></div>
+            <span class="font-bold text-2xl inline" id="formula">$$I_R \approx h \sum_{i=0}^{n-1} y_i$$</span>
+            <span class="font-bold text-2xl">=</span>
+            <span class="font-bold text-2xl" id="result"></span>
+            <span class="font-bold text-2xl">mV·s</span>
+        {% endif %}
     </div>
 </div>
 
@@ -21,7 +29,7 @@
       const formula = {
           Rectangles: "$$I_R \\approx h \\sum_{i=0}^{n-1} y_i$$",
           Trapezius: "$$I_T \\approx \\frac{h}{2} \\left[ y_0 + 2 \\sum_{i=1}^{n-1} y_i + y_n \\right]$$",
-          Simpson: "$$I_S \\approx \\frac{h}{3} \\left[ y_0 + 4 \\sum_{\\text{dispari}} y_i + 2 \\sum_{\\text{pari}} y_i + y_n \\right]$$"
+          Simpson: "$$I_S \\approx \\frac{h}{3} \\left[ y_0 + 4 \\sum_{\\text{odd}} y_i + 2 \\sum_{\\text{even}} y_i + y_n \\right]$$"
       };
       const integrals = {
           Rectangles: {{ rects_result }},
@@ -30,7 +38,17 @@
       };
 
       // Seleziona l'elemento DOM
-      const chartDom = document.getElementById('mioGraficoLineare');
+      {% if calc_id %}
+          const chartDom  = document.getElementById('chart-{{ calc_id }}');
+          const formulaEl = document.getElementById('formula-{{ calc_id }}');
+          const resultEl  = document.getElementById('result-{{ calc_id }}');
+      {% else %}
+          const chartDom = document.getElementById('chart');
+          const formulaEl = document.getElementById('formula');
+          const resultEl = document.getElementById('result');
+      {% endif %}
+
+
 
       // 2. PASSAGGIO FONDAMENTALE PER HTMX
       // Controlla se ECharts è già stato inizializzato su questo div e distruggilo
@@ -145,16 +163,22 @@
         myChart.setOption({
           series: [{ id: 'shapes', ...config[method] }]
         });
-        document.getElementById('integral-formula').textContent = formula[method];
-        document.getElementById('integral-result').textContent = integrals[method].toFixed(4);
+        formulaEl.textContent = formula[method];
+        resultEl.textContent = integrals[method].toFixed(4);
         window.MathJax.typesetPromise();
       }
 
       setMethod('{{ requested_method }}');
 
-      document.getElementById('rect-button').addEventListener('click', () => setMethod('Rectangles'));
-      document.getElementById('trap-button').addEventListener('click', () => setMethod('Trapezius'));
-      document.getElementById('simpson-button').addEventListener('click', () => setMethod('Simpson'));
+      {% if calc_id %}
+          document.getElementById('rect-button-{{ calc_id }}').addEventListener('click', () => setMethod('Rectangles'));
+          document.getElementById('trap-button-{{ calc_id }}').addEventListener('click', () => setMethod('Trapezius'));
+          document.getElementById('simpson-button-{{ calc_id }}').addEventListener('click', () => setMethod('Simpson'));
+      {% else %}
+          document.getElementById('rect-button').addEventListener('click', () => setMethod('Rectangles'));
+          document.getElementById('trap-button').addEventListener('click', () => setMethod('Trapezius'));
+          document.getElementById('simpson-button').addEventListener('click', () => setMethod('Simpson'));
+      {% endif %}
       // 5. Rendi il grafico responsivo
       // Poiché Tailwind usa il flexbox/grid, assicuriamoci che ECharts si adatti se la finestra cambia dimensione
       window.addEventListener('resize', () => myChart.resize());

@@ -1,6 +1,8 @@
 import io
 import json
+from itertools import groupby
 
+from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 import pandas as pd
 from django.views.decorators.http import require_POST, require_GET
@@ -14,6 +16,17 @@ def index(request):
 
 def example(request):
     return render(request, "calcolatore/example.html")
+
+@login_required
+def dashboard(request):
+    datasets = Dataset.objects.filter(user=request.user).order_by('-created_at')
+    grouped = [
+        (day, list(items))
+        for day, items in groupby(datasets, key=lambda d: d.created_at.date())
+    ]
+    context = { 'grouped': grouped }
+
+    return render(request, "calcolatore/dashboard.html", context)
 
 def _get_columns(csv_data):
     time_column = ""
@@ -43,7 +56,7 @@ def _csv_check(csv_file):
     if csv_data.isnull().values.any():
         # Opzionale: puoi identificare dove sono gli errori
         colonne_con_nan = csv_data.columns[csv_data.isnull().any()].tolist()
-        return HttpResponse(status=422, content=f"Errore: CSV doesn't have value in this columns: {colonne_con_nan}")
+        return HttpResponse(status=422, content=f"Error: CSV doesn't have value in this columns: {colonne_con_nan}")
     if len(csv_data.columns[0]) < 2:
         return HttpResponse(status=422, content="Error: Number of rows not greater than 1")
 
@@ -51,7 +64,7 @@ def _csv_check(csv_file):
         csv_data[column] = pd.to_numeric(csv_data[column], errors='coerce')
 
     if not (csv_data >= 0).all().all():
-        return HttpResponse(status=422, content=f"Errore: CSV has negative values")
+        return HttpResponse(status=422, content=f"Error: CSV has negative values")
 
     time_column = ""
     voltage_column = ""
@@ -64,58 +77,84 @@ def _csv_check(csv_file):
             voltage_column = csv_data.columns[0] if i == 1 else csv_data.columns[1]
 
     if counter == 2 or counter == 0:
-        return HttpResponse(status=422, content=f"Errore: CSV doesn't have a valid time column")
+        return HttpResponse(status=422, content=f"Error: CSV doesn't have a valid time column")
 
     if not _is_step(csv_data, time_column):
-        return HttpResponse(status=422, content=f"Errore: time column isn't in constant step")
+        return HttpResponse(status=422, content=f"Error: time column isn't in constant step")
     time_step = csv_data[time_column][1]
 
     if csv_data[voltage_column][len(csv_data[voltage_column]) - 1] != 0:
-        return HttpResponse(status=422, content=f"Errore: voltage column last value isn't 0")
+        return HttpResponse(status=422, content=f"Error: voltage column last value isn't 0")
 
     return [csv_data, time_column, voltage_column, time_step]
 @require_POST
-def calculate(request):
-    csv_file = request.FILES['csv_file'].read()
-
-    csv_checked = _csv_check(csv_file)
-    if isinstance(csv_checked, HttpResponse):
-        return csv_checked
-    csv_data, time_column, voltage_column, time_step = csv_checked
-
-    curve = _get_curve(csv_data, voltage_column, time_column)
-    rects, rects_result = _rectangle_method(csv_data, time_step, voltage_column, time_column)
-    trapezius, trapezius_result = _trapezius_method(csv_data, time_step, voltage_column, time_column)
-    simpson, simpson_result = _simpson_method(csv_data, time_step, voltage_column, time_column)
+def calculate(request, pk=None):
+    context = {}
     status = 200
 
-    if request.user.is_authenticated:
-        dataset = Dataset.objects.create(
-            user = request.user,
-            csv_name = request.FILES['csv_file'].name,
-            step = time_step,
-            time_values = csv_data[time_column].tolist(),
-            voltage_values = csv_data[voltage_column].tolist()
-        )
-        Calculation.objects.create(
-            dataset=dataset,
-            rects = rects,
-            trapezius = trapezius,
-            simpson = simpson,
-            result_rectangles = rects_result,
-            result_trapezius = trapezius_result,
-            result_simpson = simpson_result
-        )
-        status = 201
+    if pk:
+        if request.user.is_authenticated:
+            calc = Calculation.objects.get(dataset=pk)
+            context = {'curve': json.dumps(calc.curve),
+               'rects_result': calc.result_rectangles,
+               'rects': json.dumps(calc.rects),
+               'trapezius_result': calc.result_trapezius,
+               'trapezius': json.dumps(calc.trapezius),
+               'simpson_result': calc.result_simpson,
+               'simpson': json.dumps(calc.simpson),
+               'requested_method': request.POST.get('integral_type'),
+               'calc_id': calc.id
+               }
+        else:
+            return HttpResponse(status=403, content="Error: not authorized")
+    else:
+        csv_file = request.FILES['csv_file'].read()
+        csv_checked = _csv_check(csv_file)
+        if isinstance(csv_checked, HttpResponse):
+            return csv_checked
+        csv_data, time_column, voltage_column, time_step = csv_checked
 
-    context = {'curve': json.dumps(curve),
-               'rects_result': rects_result,
-               'rects': json.dumps(rects),
-               'trapezius_result': trapezius_result,
-               'trapezius': json.dumps(trapezius),
-               'simpson_result': simpson_result,
-               'simpson': json.dumps(simpson),
-               'requested_method': request.POST.get('integral_type')
+        curve = _get_curve(csv_data, voltage_column, time_column)
+        rects, rects_result = _rectangle_method(csv_data, time_step, voltage_column, time_column)
+        trapezius, trapezius_result = _trapezius_method(csv_data, time_step, voltage_column, time_column)
+        simpson, simpson_result = _simpson_method(csv_data, time_step, voltage_column, time_column)
+
+        if request.user.is_authenticated:
+            duplicato = Dataset.objects.filter(
+                user=request.user,
+                step=time_step,
+                time_values=csv_data[time_column].tolist(),
+                voltage_values=csv_data[voltage_column].tolist()
+            ).exists()
+            if duplicato:
+                return HttpResponse(status=409, content=f"Error: Dataset already exists")
+            dataset = Dataset.objects.create(
+                user = request.user,
+                csv_name = request.FILES['csv_file'].name,
+                step = time_step,
+                time_values = csv_data[time_column].tolist(),
+                voltage_values = csv_data[voltage_column].tolist()
+            )
+            Calculation.objects.create(
+                dataset=dataset,
+                curve = curve,
+                rects = rects,
+                trapezius = trapezius,
+                simpson = simpson,
+                result_rectangles = rects_result,
+                result_trapezius = trapezius_result,
+                result_simpson = simpson_result
+            )
+            status = 201
+
+        context = {'curve': json.dumps(curve),
+                   'rects_result': rects_result,
+                   'rects': json.dumps(rects),
+                   'trapezius_result': trapezius_result,
+                   'trapezius': json.dumps(trapezius),
+                   'simpson_result': simpson_result,
+                   'simpson': json.dumps(simpson),
+                   'requested_method': request.POST.get('integral_type')
                }
     return render(request, "calcolatore/chart.html", context, status=status)
 

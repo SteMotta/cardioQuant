@@ -7,5 +7,71 @@
 {% endblock %}
 
 {% block content %}
+    <div class="flex flex-col" x-data="{ open: null }">
+        <div class="flex items-center">
+            <div class="avatar">
+                <div class="w-30 rounded-full">
+                    <img src="{{ user.socialaccount_set.all.0.get_avatar_url }}"
+                           alt="Profilo di {{ user.username }}">
+                </div>
+            </div>
+            <span class="text-3xl ml-5">Welcome, {{ user.username|capfirst }}</span>
+        </div>
+
+
+  {% for day, items in grouped %}
+      <div class="divider">{{ day|date:"j F" }}</div>
+      {% for calc in items %}
+
+        <div class="collapse bg-base-100 border border-base-300 w-[80vw] mx-auto mb-3">
+
+          <input type="checkbox"
+                 id="collapse-toggle-{{ calc.id }}"
+                 class="peer"
+                 :checked="open === '{{ calc.id }}'"
+                 @change="open = ($event.target.checked ? '{{ calc.id }}' : null)"
+                 hx-post="{% url 'calcolatore:calculate' calc.id %}"
+                 hx-target="#calc-chart-{{ calc.id }}"
+                 hx-swap="innerHTML"
+                 hx-vals='{"integral_type": "Rectangles"}' />
+
+          <label for="collapse-toggle-{{ calc.id }}" class="fixed inset-0 hidden peer-checked:block"></label>
+
+          <div class="collapse-title font-semibold flex justify-between">
+            {{ calc.csv_name }}
+            <span>{{ calc.created_at }}</span>
+          </div>
+
+          <div class="collapse-content text-sm z-1">
+            <div id="calc-chart-{{ calc.id }}"></div>
+
+            <div class="tabs tabs-box transition-discrete m-1 w-fit mx-auto">
+              <input type="radio" name="tabs-{{ calc.id }}" class="tab" id="rect-button-{{ calc.id }}"
+                     aria-label="Rectangles"
+                     hx-post="{% url 'calcolatore:calculate' calc.id %}"
+                     hx-target="#calc-chart-{{ calc.id }}"
+                     hx-vals='{"integral_type": "Rectangles"}'
+                     hx-swap="innerHTML"
+                     checked />
+              <input type="radio" name="tabs-{{ calc.id }}" class="tab" id="trap-button-{{ calc.id }}"
+                     aria-label="Trapezius"
+                     hx-post="{% url 'calcolatore:calculate' calc.id %}"
+                     hx-target="#calc-chart-{{ calc.id }}"
+                     hx-vals='{"integral_type": "Trapezius"}'
+                     hx-swap="innerHTML" />
+              <input type="radio" name="tabs-{{ calc.id }}" class="tab" id="simpson-button-{{ calc.id }}"
+                     aria-label="Simpson"
+                     hx-post="{% url 'calcolatore:calculate' calc.id %}"
+                     hx-target="#calc-chart-{{ calc.id }}"
+                     hx-vals='{"integral_type": "Simpson"}'
+                     hx-swap="innerHTML" />
+            </div>
+          </div>
+        </div>
+
+      {% endfor %}
+      {% endfor %}
+    </div>
+
 
 {% endblock %}

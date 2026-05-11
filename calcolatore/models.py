@@ -20,6 +20,7 @@ class Dataset(models.Model):
 
 class Calculation(models.Model):
     dataset           = models.OneToOneField(Dataset, on_delete=models.CASCADE, related_name='calculation')
+    curve             = models.JSONField()
     rects             = models.JSONField()
     trapezius          = models.JSONField()
     simpson            = models.JSONField()

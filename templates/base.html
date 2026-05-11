@@ -19,11 +19,11 @@
     <header class="navbar bg-base-200 shadow-md px-4 md:px-8">
         <div class="flex-1 flex items-center gap-2">
             <a href="/" class="btn btn-ghost normal-case text-2xl font-bold text-primary">
-                Progetto Matematica
+                CardioQuant
             </a>
 
             <div class="dropdown">
-                <div tabindex="0" role="button" class="btn btn-ghost btn-sm text-lg">
+                <div tabindex="0" role="button" class="btn btn-ghost text-lg">
                     Calculator
                     <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
@@ -46,11 +46,11 @@
                   </div>
               </div>
               <ul tabindex="-1" class="dropdown-content menu bg-base-100 rounded-box z-1 w-auto p-2 shadow-sm">
-                <li><a>List</a></li>
+                <li><a href="{% url "calcolatore:dashboard" %}">Dashboard</a></li>
                 <li>
                     <form method="post" action="{% url 'account_logout' %}">
                         {% csrf_token %}
-                        <button type="submit" class="text-error">Logout</button>
+                        <button type="submit" class="text-error w-full text-left">Logout</button>
                     </form>
                 </li>
               </ul>
