@@ -111,15 +111,7 @@
 
         const alpineData = Alpine.$data(alpineNode);
 
-        if (evt.detail.failed) {
-            // Caso Errore (Rosso)
-            let errorMsg = evt.detail.xhr.responseText || "Errore durante il calcolo";
-
-            alpineData.feedback.message = errorMsg;
-            alpineData.feedback.type = 'error';
-            alpineData.feedback.show = true;
-
-        } else if (evt.detail.xhr.status === 200 || evt.detail.xhr.status === 201) {
+        if (evt.detail.xhr.status === 200 || evt.detail.xhr.status === 201) {
             // Caso Successo (Verde)
             // ESEMPIO: Leggi un header custom dal server per il commento
             // Se nel Django View metti response['HX-Trigger'] = '{"commento": "Ottimo lavoro!"}'
