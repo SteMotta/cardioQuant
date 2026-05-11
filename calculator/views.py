@@ -9,13 +9,13 @@ from django.views.decorators.http import require_POST, require_GET
 from django.conf import settings
 from django.http import HttpResponse
 import numpy as np
-from calcolatore.models import Dataset, Calculation
+from calculator.models import Dataset, Calculation
 
 def index(request):
-    return render(request, "calcolatore/index.html")
+    return render(request, "calculator/index.html")
 
 def example(request):
-    return render(request, "calcolatore/example.html")
+    return render(request, "calculator/example.html")
 
 @login_required
 def dashboard(request):
@@ -26,7 +26,7 @@ def dashboard(request):
     ]
     context = { 'grouped': grouped }
 
-    return render(request, "calcolatore/dashboard.html", context)
+    return render(request, "calculator/dashboard.html", context)
 
 def _get_columns(csv_data):
     time_column = ""
@@ -156,11 +156,11 @@ def calculate(request, pk=None):
                    'simpson': json.dumps(simpson),
                    'requested_method': request.POST.get('integral_type')
                }
-    return render(request, "calcolatore/chart.html", context, status=status)
+    return render(request, "calculator/chart.html", context, status=status)
 
 @require_POST
 def calculate_example(request):
-    path = settings.BASE_DIR / 'calcolatore' / 'data' / 'ecg_example.csv'
+    path = settings.BASE_DIR / 'calculator' / 'data' / 'ecg_example.csv'
     csv_data = pd.read_csv(path)
     time_column, voltage_column  = _get_columns(csv_data)
     time_step = _get_time_step(csv_data, time_column)
@@ -179,7 +179,7 @@ def calculate_example(request):
                'requested_method': request.POST.get('integral_type')
                }
 
-    return render(request, "calcolatore/chart.html", context)
+    return render(request, "calculator/chart.html", context)
 
 def _is_step(data_frame, time_column):
     step = data_frame[time_column][1]

@@ -41,7 +41,7 @@ class Migration(migrations.Migration):
                 ('result_simpson', models.FloatField()),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
-                ('dataset', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='calculation', to='calcolatore.dataset')),
+                ('dataset', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='calculation', to='calculator.dataset')),
             ],
         ),
     ]

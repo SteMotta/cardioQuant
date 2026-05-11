@@ -10,7 +10,7 @@
 <div x-data="{ integralType: 'Rectangles' }"
         class="flex flex-col gap-1 items-center">
 
-    <button hx-post="{% url "calcolatore:calculate_example" %}"
+    <button hx-post="{% url "calculator:calculate_example" %}"
             hx-target="#calc-chart"
             hx-swap="innerHTML"
             :hx-vals="JSON.stringify({ integral_type: integralType })"

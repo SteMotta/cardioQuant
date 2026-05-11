@@ -7,7 +7,7 @@
 {% block content %}
     <div class="" x-data="{ integralType: 'Rectangles' }">
         <form class="flex flex-col gap-1" enctype="multipart/form-data"
-        hx-post="{% url 'calcolatore:calculate' %}"
+        hx-post="{% url 'calculator:calculate' %}"
         hx-target="#calc-chart"
         hx-swap="innerHTML">
             {% csrf_token %}

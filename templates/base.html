@@ -31,8 +31,8 @@
                     </svg>
                 </div>
                 <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-10 w-52 p-2 shadow-md">
-                    <li><a href="{% url "calcolatore:example" %}">Example</a></li>
-                    <li><a href="{% url "calcolatore:index" %}">Input File</a></li>
+                    <li><a href="{% url "calculator:example" %}">Example</a></li>
+                    <li><a href="{% url "calculator:index" %}">Input File</a></li>
                 </ul>
             </div>
         </div>
@@ -47,7 +47,7 @@
                   </div>
               </div>
               <ul tabindex="-1" class="dropdown-content menu bg-base-100 rounded-box z-1 w-auto p-2 shadow-sm">
-                <li><a href="{% url "calcolatore:dashboard" %}">Dashboard</a></li>
+                <li><a href="{% url "calculator:dashboard" %}">Dashboard</a></li>
                 <li>
                     <form method="post" action="{% url 'account_logout' %}">
                         {% csrf_token %}
