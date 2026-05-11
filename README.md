@@ -1,6 +1,6 @@
 # CardioQuant
 
-**CardioQuant** is a web application for numerical integration of ECG (electrocardiogram) signals. It allows users to upload CSV files containing time–voltage data, compute the area under the curve using three different numerical methods, and visualise the results interactively. Authenticated users can save and revisit past calculations from a personal dashboard.
+**CardioQuant** is a web application for numerical integration of ECG (electrocardiogram) signals. It allows users to upload CSV files containing time–voltage data, compute the area under the curve using three different numerical methods, and visualise the results interactively. Authenticated users can save and revisit past calculations from a personal dashboard. After each computation the app provides **clinical feedback** indicating whether the ECG integral falls within a physiological range.
 
 ---
 
@@ -43,7 +43,7 @@ The result is expressed in **mV·s** (millivolt-seconds) and is visualised along
 | **Python** | 3.x | Runtime language |
 | **Django** | 6.0.4 | Web framework (MVT pattern) |
 | **pandas** | 3.0.2 | CSV parsing and data validation |
-| **NumPy** | 2.4.4 | Numerical operations (e.g. `np.isclose`) |
+| **NumPy** | 2.4.4 | Vectorised numerical operations (integration, `np.isclose`) |
 | **SQLite** | — | Default database (`db.sqlite3`) |
 | **Gunicorn** | 26.0.0 | WSGI server for production |
 | **Whitenoise** | 6.12.0 | Static file serving in production |
@@ -51,6 +51,7 @@ The result is expressed in **mV·s** (millivolt-seconds) and is visualised along
 | **django-htmx** | 1.27.0 | HTMX middleware integration |
 | **django-extensions** | 4.1 | Development utilities |
 | **PyJWT** | 2.12.1 | JWT token support |
+| **python-dotenv** | 1.2.2 | Loads environment variables from `.env` file |
 
 ### Frontend
 
@@ -69,8 +70,9 @@ The result is expressed in **mV·s** (millivolt-seconds) and is visualised along
 
 ```
 cardioQuant/
-├── manage.py                    # Django CLI entry point
+├── manage.py                    # Django CLI entry point (loads .env via python-dotenv)
 ├── requirements.txt             # Python dependencies
+├── .env                         # Environment variables (not committed)
 ├── db.sqlite3                   # SQLite database
 │
 ├── cardioQuant/                 # Django project configuration
@@ -118,10 +120,10 @@ Users upload a two-column CSV file (time, voltage). The backend (`_csv_check`) v
 - The voltage column's **last value is 0** (signal returns to baseline)
 
 ### 2. Numerical Integration
-After validation, three integrals are computed simultaneously and sent to the template:
-- **Rectangles** — left Riemann sum
-- **Trapezius** — trapezoidal rule
-- **Simpson** — composite Simpson's 1/3 rule
+After validation, three integrals are computed simultaneously using **vectorised NumPy operations** and sent to the template:
+- **Rectangles** — left Riemann sum (`V[:-1].sum() * h`)
+- **Trapezius** — trapezoidal rule (`h/2 * (V[0] + 2*V[1:-1].sum() + V[-1])`)
+- **Simpson** — composite Simpson's 1/3 rule (`h/3 * (V[0] + 4*odd.sum() + 2*even_inner.sum() + V[-1])`)
 
 Results and shape data (rectangles, trapezoids, parabolic areas) are returned as JSON for client-side chart rendering.
 
@@ -136,14 +138,24 @@ Built with **Apache ECharts**, the chart displays:
 
 $$I_R \approx h \sum_{i=0}^{n-1} y_i$$
 
-### 5. Built-in Example
+### 5. Clinical Feedback
+After each calculation the server returns a custom `X-Average` HTTP header containing the **average integral** across all three methods. The frontend evaluates this value and displays an inline alert:
+
+| Average range (mV·s)  | Feedback                                                        | Alert type |
+|-----------------------|-----------------------------------------------------------------|------------|
+| 0.05 ≤ avg ≤ 0.20    | **Physiological Value** (Value within normal range)             | Success    |
+| avg < 0.05            | **AT RISK** (Excessively low voltage) — Consult a Physician    | Warning    |
+| avg > 0.20            | **AT RISK** (Suspected Hypertrophy or conduction abnormality) — Consult a Physician | Warning |
+
+### 6. Built-in Example
 A pre-loaded ECG dataset (`ecg_example.csv`) is available for users who want to try the tool without their own data.
 
-### 6. User Dashboard
+### 7. User Dashboard
 Authenticated users can:
 - Have their calculations **automatically saved** after upload (duplicate detection prevents repeated saves)
 - Access a **dashboard** showing all past calculations grouped by date
 - **Re-open** any past calculation and switch between integration methods via HTMX — no data re-upload required
+- **Delete** a saved dataset via an inline delete button (with confirmation dialog); removal is handled by an HTMX `DELETE` request and the card is removed from the DOM without a page reload
 
 ---
 
@@ -174,6 +186,8 @@ Stores the computed integration results linked 1-to-1 with a Dataset.
 | `result_rectangles` | FloatField | Area via rectangles (mV·s) |
 | `result_trapezius` | FloatField | Area via trapezius (mV·s) |
 | `result_simpson` | FloatField | Area via Simpson (mV·s) |
+| `created_at` | DateTimeField | Auto-set on creation |
+| `updated_at` | DateTimeField | Auto-updated on every save |
 
 ---
 
@@ -189,22 +203,34 @@ Stores the computed integration results linked 1-to-1 with a Dataset.
 | GET | `/calculator/example` | `calculator:example` | Example page |
 | POST | `/calculator/calculate_example` | `calculator:calculate_example` | Run example calculation |
 | GET | `/calculator/dashboard` | `calculator:dashboard` | User history (login required) |
+| DELETE | `/calculator/delete_dataset/<pk>` | `calculator:delete_dataset` | Delete a saved dataset (login required) |
 | GET | `/admin/` | Django Admin | Admin panel |
 
 ---
 
 ## Numerical Methods
 
+All methods are implemented with **vectorised NumPy** operations for performance and correctness.
+
 ### Rectangle Method (Left Riemann Sum)
 $$I_R \approx h \sum_{i=0}^{n-1} y_i$$
+
+Implementation: `time_step * V[:-1].sum()` — sums only the first *n* voltage values (left endpoints).
 
 ### Trapezoidal Rule
 $$I_T \approx \frac{h}{2} \left[ y_0 + 2\sum_{i=1}^{n-1} y_i + y_n \right]$$
 
+Implementation: `time_step / 2 * (V[0] + 2 * V[1:-1].sum() + V[-1])`
+
 ### Simpson's 1/3 Rule
 $$I_S \approx \frac{h}{3} \left[ y_0 + 4\sum_{\text{odd}} y_i + 2\sum_{\text{even}} y_i + y_n \right]$$
 
+Implementation: `time_step / 3 * (V[0] + 4 * V[1:-1:2].sum() + 2 * V[2:-2:2].sum() + V[-1])`
+
 Where `h` is the constant time step between samples.
+
+### Average Result
+After computing all three integrals, the server calculates the **mean** of the three results (`_get_average_result`) and returns it in the `X-Average` response header for clinical feedback purposes.
 
 ---
 
@@ -225,8 +251,10 @@ The user's Google profile picture is displayed in the navbar and dashboard.
 - **Theme**: DaisyUI **Nord** theme (`data-theme="nord"`)
 - **Layout**: Sticky navbar with a Calculator dropdown, responsive main content area, and a copyright footer
 - **HTMX**: Form submissions post to `/calculator/calculate` and swap only the `#calc-chart` div — no full page reload
-- **Alpine.js**: Manages the selected integration method state and toast notification visibility on the client side
-- **Toast Notifications**: Error messages (HTTP 4xx) and success messages (HTTP 201 – calculation saved) are surfaced via an Alpine-powered toast component
+- **Alpine.js**: Manages the selected integration method state, toast notification visibility, and inline clinical feedback alerts on the client side
+- **Toast Notifications**: Error messages (HTTP 4xx) and success messages (HTTP 201 – calculation saved, HTTP 204 – dataset deleted) are surfaced via an Alpine-powered toast component
+- **Clinical Feedback Alerts**: An inline alert banner (success / warning) is displayed after each calculation, showing whether the integral is within physiological range; the alert is dismissible with a close button
+- **Dataset Deletion**: Each dashboard card includes a delete button (trash icon) that triggers an HTMX `DELETE` request with a confirmation dialog; upon success the card is removed from the DOM via the `HX-Trigger: delete-collapse` mechanism
 
 ---
 
@@ -264,13 +292,16 @@ python -m venv .venv
 # 3. Install Python dependencies
 pip install -r requirements.txt
 
-# 4. Apply database migrations
+# 4. Create a .env file with your environment variables
+# (see table below)
+
+# 5. Apply database migrations
 python manage.py migrate
 
-# 5. Install Tailwind CSS dependencies
+# 6. Install Tailwind CSS dependencies
 python manage.py tailwind install
 
-# 6. (Optional) Create a superuser for the Django admin
+# 7. (Optional) Create a superuser for the Django admin
 python manage.py createsuperuser
 ```
 
@@ -289,6 +320,8 @@ python manage.py runserver
 Then open [http://127.0.0.1:8000](http://127.0.0.1:8000) in your browser.
 
 ### Environment Variables (for Google OAuth & production)
+
+Environment variables are loaded automatically from the `.env` file via **python-dotenv** (called in `manage.py`).
 
 | Variable | Description |
 |---|---|
