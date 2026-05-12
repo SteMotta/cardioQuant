@@ -27,6 +27,7 @@ class Calculation(models.Model):
     result_rectangles = models.FloatField()
     result_trapezius  = models.FloatField()
     result_simpson    = models.FloatField()
+    v_max             = models.FloatField()
     created_at        = models.DateTimeField(auto_now_add=True)
     updated_at        = models.DateTimeField(auto_now=True)
 

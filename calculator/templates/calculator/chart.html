@@ -1,5 +1,5 @@
 <!-- Contenitore del grafico stile DaisyUI -->
-<div class="overflow-x-auto rounded-box border border-base-content/10 bg-base-200 mt-3">
+<div class="overflow-x-auto rounded-box border border-base-content/10 bg-base-200 mt-3 chart-animate-in">
     <div class="flex justify-center items-center p-6">
         {% if calc_id %}
             <div id="chart-{{ calc_id }}" class="w-auto aspect-video h-80"></div>
@@ -62,6 +62,31 @@
 
       // 4. Configurazione stile ECharts
       const option = {
+          animation: true,
+          animationDuration: 1000,
+          animationEasing: 'cubicOut',
+          animationDelay: 200,
+
+          // ← aggiungi questi
+          animationDurationUpdate: 450,
+          animationEasingUpdate: 'cubicInOut',
+
+            dataZoom: [
+                {
+                  type: 'inside',   // zoom con scroll del mouse / pinch su mobile
+                  xAxisIndex: 0,
+                  start: 0,
+                  end: 100
+                },
+                {
+                  type: 'slider',   // barra scorrevole sotto il grafico
+                  xAxisIndex: 0,
+                  start: 0,
+                  end: 100,
+                  height: 20
+                }
+              ],
+
         grid: { top: 24, right: 16, bottom: 44, left: 52 },
         xAxis: {
           type: 'value',
@@ -74,18 +99,28 @@
           type: 'value',
           name: 'Tensione (mV)',
           nameLocation: 'middle',
-          nameGap: 42
+          nameGap: 42,
+          max: value => Math.ceil({{ v_max }}) + 1,   // ← aggiunge questo
+          min: 0
         },
 
         series: [
           // 1. Rettangoli
-          { type: 'custom', id: 'shapes', z: 2, data: [], renderItem: renderRect },
+          {
+              type: 'custom',
+              id: 'shapes',
+              z: 2,
+              data: [],
+              renderItem: renderRect
+          },
 
           // 2. Curva ECG
           {
             type: 'line',
             smooth: true,
             id: 'curve',
+            showSymbol: false,
+            sampling: 'lttb',
             z: 10,
             data: curve,
             symbol: 'circle',
@@ -98,6 +133,12 @@
 
       // Applica la configurazione
       myChart.setOption(option);
+
+      myChart.on('datazoom', () => {
+            myChart.setOption({
+                series: [{ id: 'shapes' }]
+            });
+        });
 
         // --- renderItem per rettangoli ---
       function renderRect(params, api) {

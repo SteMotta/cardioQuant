@@ -86,23 +86,11 @@
             <div class="tabs tabs-box transition-discrete mt-3 w-fit mx-auto">
               <input type="radio" name="tabs-{{ calc.id }}" class="tab" id="rect-button-{{ calc.id }}"
                      aria-label="Rectangles"
-                     hx-post="{% url 'calculator:calculate' calc.id %}"
-                     hx-target="#calc-chart-{{ calc.id }}"
-                     hx-vals='{"integral_type": "Rectangles"}'
-                     hx-swap="innerHTML"
                      checked />
               <input type="radio" name="tabs-{{ calc.id }}" class="tab" id="trap-button-{{ calc.id }}"
-                     aria-label="Trapezius"
-                     hx-post="{% url 'calculator:calculate' calc.id %}"
-                     hx-target="#calc-chart-{{ calc.id }}"
-                     hx-vals='{"integral_type": "Trapezius"}'
-                     hx-swap="innerHTML" />
+                     aria-label="Trapezius"/>
               <input type="radio" name="tabs-{{ calc.id }}" class="tab" id="simpson-button-{{ calc.id }}"
-                     aria-label="Simpson"
-                     hx-post="{% url 'calculator:calculate' calc.id %}"
-                     hx-target="#calc-chart-{{ calc.id }}"
-                     hx-vals='{"integral_type": "Simpson"}'
-                     hx-swap="innerHTML" />
+                     aria-label="Simpson"/>
             </div>
           </div>
         </div>

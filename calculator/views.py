@@ -46,9 +46,11 @@ def _get_time_step(csv_data, time_column):
 
 def _csv_check(csv_file):
     try:
-        csv_data = pd.read_csv(io.BytesIO(csv_file), on_bad_lines='error')
+        csv_data = pd.read_csv(io.BytesIO(csv_file), on_bad_lines='error', sep=";", decimal=",")
+        print(len(csv_data.columns))
     except pd.errors.ParserError:
         return HttpResponse(status=422, content="Error: CSV file not valid")
+
     if csv_data.empty:
         return HttpResponse(status=422, content="Error: CSV file empty")
     if len(csv_data.columns) != 2:
@@ -104,7 +106,8 @@ def calculate(request, pk=None):
                'simpson_result': calc.result_simpson,
                'simpson': json.dumps(calc.simpson),
                'requested_method': request.POST.get('integral_type'),
-               'calc_id': calc.id
+               'calc_id': calc.id,
+               'v_max': calc.v_max
                }
         else:
             return HttpResponse(status=403, content="Error: not authorized")
@@ -115,7 +118,7 @@ def calculate(request, pk=None):
             return csv_checked
         csv_data, time_column, voltage_column, time_step = csv_checked
 
-        curve = _get_curve(csv_data, voltage_column, time_column)
+        curve, v_max = _get_curve(csv_data, voltage_column, time_column)
         rects, rects_result = _rectangle_method(csv_data, time_step, voltage_column, time_column)
         trapezius, trapezius_result = _trapezius_method(csv_data, time_step, voltage_column, time_column)
         simpson, simpson_result = _simpson_method(csv_data, time_step, voltage_column, time_column)
@@ -144,7 +147,8 @@ def calculate(request, pk=None):
                 simpson = simpson,
                 result_rectangles = rects_result,
                 result_trapezius = trapezius_result,
-                result_simpson = simpson_result
+                result_simpson = simpson_result,
+                v_max = v_max,
             )
             status = 201
 
@@ -155,7 +159,8 @@ def calculate(request, pk=None):
                    'trapezius': json.dumps(trapezius),
                    'simpson_result': simpson_result,
                    'simpson': json.dumps(simpson),
-                   'requested_method': request.POST.get('integral_type')
+                   'requested_method': request.POST.get('integral_type'),
+                   'v_max': v_max,
                }
 
     response = render(request, "calculator/chart.html", context, status=status)
@@ -171,7 +176,7 @@ def calculate_example(request):
     csv_data = pd.read_csv(path)
     time_column, voltage_column  = _get_columns(csv_data)
     time_step = _get_time_step(csv_data, time_column)
-    curve = _get_curve(csv_data, voltage_column, time_column)
+    curve, v_max = _get_curve(csv_data, voltage_column, time_column)
     rects, rects_result = _rectangle_method(csv_data, time_step, voltage_column, time_column)
     trapezius, trapezius_result = _trapezius_method(csv_data, time_step, voltage_column, time_column)
     simpson, simpson_result = _simpson_method(csv_data, time_step, voltage_column, time_column)
@@ -183,7 +188,8 @@ def calculate_example(request):
                'trapezius': json.dumps(trapezius),
                'simpson_result': simpson_result,
                'simpson': json.dumps(simpson),
-               'requested_method': request.POST.get('integral_type')
+               'requested_method': request.POST.get('integral_type'),
+               'v_max': v_max,
                }
 
     response = render(request, "calculator/chart.html", context)
@@ -215,7 +221,7 @@ def _is_step(data_frame, time_column):
 def _get_curve(csv_data, voltage_column, time_column):
     T = csv_data[time_column].to_numpy()
     V = csv_data[voltage_column].to_numpy()
-    return np.column_stack([T, V]).tolist()
+    return np.column_stack([T, V]).tolist(), float(V.max())
 
 def _rectangle_method(csv_data, time_step, voltage_column, time_column):
     T = csv_data[time_column].to_numpy()
