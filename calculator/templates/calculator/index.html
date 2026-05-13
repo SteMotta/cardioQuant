@@ -4,14 +4,6 @@
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 {% endblock %}
-{% block extra_css %}
-    <style>
-    .htmx-indicator { display: none; }
-    .htmx-request .htmx-indicator,
-    .htmx-indicator.htmx-request { display: inline-flex; }
-    </style>
-
-{% endblock %}
 {% block content %}
     <div class=""
          x-data="{ integralType: 'Rectangles',
@@ -51,9 +43,9 @@
                     </div>
                 </div>
             </template>
-            <input type="file" name="csv_file" class="file-input file-input-md w-fit mx-auto" id="csv_file" accept=".csv" required/>
+            <input type="file" name="csv_file" class="file-input file-input-md w-100 mx-auto" id="csv_file" accept=".csv" required/>
             <input type="hidden" name="integral_type" :value="integralType">
-            <input type="submit" class="btn btn-soft w-fit mx-auto" value="Send">
+            <input type="submit" class="btn btn-soft w-100 mx-auto" value="Send">
         </form>
 
         <div id="calc-chart">

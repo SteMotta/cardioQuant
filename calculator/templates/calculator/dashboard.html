@@ -15,88 +15,207 @@
                            alt="Profilo di {{ user.username }}">
                 </div>
             </div>
-            <span class="text-3xl ml-5">Welcome, {{ user.username|capfirst }}</span>
+            <span class="text-3xl ml-5 mr-5">Welcome, {{ user.username|capfirst }}</span>
+            <a href="{% url 'calculator:index' %}" class="btn btn-primary text-white w-fit ml-auto mt-3">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                     viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M12 4v16m8-8H4"/>
+                </svg>
+                Add Dataset
+            </a>
         </div>
+
 
 
   {% for day, items in grouped %}
-      <div class="divider">{{ day|date:"j F" }}</div>
-      {% for calc in items %}
+      <div class="day-group">
+          <div class="divider">{{ day|date:"j F" }}</div>
+          {% for calc in items %}
 
-        <div class="collapse bg-base-100 border border-base-300 w-[80vw] mx-auto mb-3">
+            <div class="collapse bg-base-100 border border-base-300 w-[80vw] mx-auto mb-3">
 
-          <input type="checkbox"
-                 id="collapse-toggle-{{ calc.id }}"
-                 class="peer"
-                 :checked="open === '{{ calc.id }}'"
-                 @change="open = ($event.target.checked ? '{{ calc.id }}' : null)"
-                 hx-post="{% url 'calculator:calculate' calc.id %}"
-                 hx-target="#calc-chart-{{ calc.id }}"
-                 hx-swap="innerHTML"
-                 hx-trigger="click once"
-                 hx-vals='{"integral_type": "Rectangles"}' />
+              <input type="checkbox"
+                     id="collapse-toggle-{{ calc.id }}"
+                     class="peer"
+                     :checked="open === '{{ calc.id }}'"
+                     @change="open = ($event.target.checked ? '{{ calc.id }}' : null)"
+                     hx-post="{% url 'calculator:calculate' calc.id %}"
+                     hx-target="#calc-chart-{{ calc.id }}"
+                     hx-swap="innerHTML"
+                     hx-trigger="click once"
+                     hx-vals='{"integral_type": "Rectangles"}' />
 
-          <label for="collapse-toggle-{{ calc.id }}" class="fixed inset-0 hidden peer-checked:block"></label>
+              <label for="collapse-toggle-{{ calc.id }}" class="fixed inset-0 hidden peer-checked:block"></label>
 
-          <div class="collapse-title font-semibold flex justify-between items-center group">
-            <span>{{ calc.csv_name }}</span>
+              <div class="collapse-title font-semibold flex justify-between items-center group">
+                <span>{{ calc.csv_name }}</span>
 
-            <div class="flex items-center gap-6 relative z-10">
-                <span class="text-base opacity-75 font-normal font-semibold">{{ calc.created_at|date:"H:i" }}</span>
+                <div class="flex items-center gap-6 relative z-10">
+                    <span class="text-base opacity-75 font-normal font-semibold">
+                        {{ calc.created_at|date:"H:i" }}
+                        {% if calc.is_modified %}
+                            <span class="text-xs opacity-60">
+                                (mod. {{ calc.updated_at|date:"j M H:i" }})
+                            </span>
+                        {% endif %}
+                    </span>
 
-                <button
-                    class="btn btn-error btn-sm btn-square text-white hover:bg-red-700 transition-opacity"
-                    hx-delete="{% url 'calculator:delete_dataset' calc.id %}"
-                    hx-on:delete-collapse="this.closest('.collapse').remove()"
-                    hx-confirm="Sei sicuro di voler eliminare questo calcolo?"
-                    @click.stop
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                </button>
-            </div>
-          </div>
+                    <!-- Bottone modifica -->
+                    <button
+                        class="btn btn-primary btn-sm btn-square text-white"
+                        @click.stop="$dispatch('edit-dataset', {
+                            id: '{{ calc.id }}',
+                            times: {{ calc.time_values|safe }},
+                            voltages: {{ calc.voltage_values|safe }}
+                        })"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                             viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5
+                                     m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                        </svg>
+                    </button>
 
-          <div class="collapse-content text-sm z-1" x-data="{feedback: { show: false, message: '', type: '' }}">
-              <template x-if="feedback.show">
-                    <div :class="'alert mb-4 shadow-lg flex items-center justify-start ' + (feedback.type === 'success' ? 'alert-success' : 'alert-warning')"
-                         x-transition>
+                    <button
+                        class="btn btn-error btn-sm btn-square text-white"
+                        hx-delete="{% url 'calculator:delete_dataset' calc.id %}"
+                        hx-on:delete-collapse="
+                            const collapse = this.closest('.collapse');
+                            const group = collapse.closest('.day-group');
+                            collapse.remove();
+                            if (!group.querySelector('.collapse')) group.remove();
+                        "
+                        hx-confirm="Are you sure you want to delete this ECG?"
+                        @click.stop
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                    </button>
+                </div>
+              </div>
 
-                        <div class="flex items-center gap-2">
-                            <template x-if="feedback.type === 'success'">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                            </template>
+              <div class="collapse-content text-sm z-1" x-data="{feedback: { show: false, message: '', type: '' }}">
+                  <template x-if="feedback.show">
+                        <div :class="'alert mb-4 shadow-lg flex items-center justify-start ' + (feedback.type === 'success' ? 'alert-success' : 'alert-warning')"
+                             x-transition>
 
-                            <template x-if="feedback.type === 'error'">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                            </template>
+                            <div class="flex items-center gap-2">
+                                <template x-if="feedback.type === 'success'">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </template>
 
-                            <span class="font-medium" x-text="feedback.message"></span>
+                                <template x-if="feedback.type === 'error'">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </template>
+
+                                <span class="font-medium" x-text="feedback.message"></span>
+                            </div>
                         </div>
-                    </div>
-                </template>
+                    </template>
 
-            <div id="calc-chart-{{ calc.id }}"></div>
+                <div id="calc-chart-{{ calc.id }}"></div>
 
-            <div class="tabs tabs-box transition-discrete mt-3 w-fit mx-auto">
-              <input type="radio" name="tabs-{{ calc.id }}" class="tab" id="rect-button-{{ calc.id }}"
-                     aria-label="Rectangles"
-                     checked />
-              <input type="radio" name="tabs-{{ calc.id }}" class="tab" id="trap-button-{{ calc.id }}"
-                     aria-label="Trapezius"/>
-              <input type="radio" name="tabs-{{ calc.id }}" class="tab" id="simpson-button-{{ calc.id }}"
-                     aria-label="Simpson"/>
+                <div class="tabs tabs-box transition-discrete mt-3 w-fit mx-auto">
+                  <input type="radio" name="tabs-{{ calc.id }}" class="tab" id="rect-button-{{ calc.id }}"
+                         aria-label="Rectangles"
+                         checked />
+                  <input type="radio" name="tabs-{{ calc.id }}" class="tab" id="trap-button-{{ calc.id }}"
+                         aria-label="Trapezius"/>
+                  <input type="radio" name="tabs-{{ calc.id }}" class="tab" id="simpson-button-{{ calc.id }}"
+                         aria-label="Simpson"/>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
 
-      {% endfor %}
-      {% endfor %}
+          {% endfor %}
+      </div>
+  {% endfor %}
+
+    <div
+        x-data="{
+            show:     false,
+            calcId:   null,
+            times:    [],
+            voltages: [],
+            open(d) {
+                this.calcId   = d.id;
+                this.times    = [...d.times];
+                this.voltages = [...d.voltages];
+                this.show     = true;
+            },
+            close() { this.show = false; },
+            submit() {
+                htmx.ajax('POST', '/calculator/update/' + this.calcId + '/', {
+                    target:  '#calc-chart-' + this.calcId,
+                    swap:    'innerHTML',
+                    values: {
+                        voltage_values: JSON.stringify(this.voltages),
+                        integral_type:  'Rectangles',
+                        csrfmiddlewaretoken: document.cookie.match(/csrftoken=([^;]+)/)?.[1] ?? ''
+                    }
+                });
+                this.close();
+            }
+        }"
+        @edit-dataset.window="open($event.detail)"
+    >
+        <div
+            x-show="show"
+            x-transition.opacity
+            class="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+            @click.self="close()"
+        >
+            <div class="bg-base-100 rounded-box shadow-xl p-8 w-[95vw] max-w-6xl flex flex-col gap-6">
+
+                <div class="flex justify-between items-center">
+                    <h3 class="font-bold text-xl">Modifica Dataset</h3>
+                    <button class="btn btn-sm btn-circle btn-ghost" @click="close()">✕</button>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="table text-center">
+                        <tbody>
+                            <tr>
+                                <th class="text-left pr-6 text-base font-semibold">t (s)</th>
+                                <template x-for="(t, i) in times" :key="'t-'+i">
+                                    <td class="text-center text-base px-2" x-text="t"></td>
+                                </template>
+                            </tr>
+                            <tr>
+                                <th class="text-left pr-6 text-base font-semibold">V (mV)</th>
+                                <template x-for="(v, i) in voltages" :key="'v-'+i">
+                                    <td>
+                                        <input
+                                            type="number" step="0.001"
+                                            min="0"
+                                            max="10"
+                                            x-model.number="voltages[i]"
+                                            class="input input-sm w-24 text-center text-base"
+                                        />
+                                    </td>
+                                </template>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="flex justify-end gap-3">
+                    <button class="btn btn-md" @click="close()">Annulla</button>
+                    <button class="btn btn-md btn-primary" @click="submit()">Ricalcola</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
     <dialog x-data="{
             open: false,
             message: '',
@@ -160,11 +279,14 @@
         if (evt.detail.failed) {
             // Caso Errore (Rosso)
             let errorMsg = evt.detail.xhr.responseText || "Errore durante il calcolo";
-
             alpineData.feedback.message = errorMsg;
             alpineData.feedback.type = 'error';
             alpineData.feedback.show = true;
 
+        } else if (evt.detail.xhr.getResponseHeader('X-Dataset-Updated') === 'true') {
+            alpineData.feedback.message = "Dataset updated successfully!";
+            alpineData.feedback.type = type;
+            alpineData.feedback.show = true;
         } else if (evt.detail.xhr.status === 200 || evt.detail.xhr.status === 201) {
             // Caso Successo (Verde)
             // ESEMPIO: Leggi un header custom dal server per il commento

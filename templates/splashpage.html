@@ -13,10 +13,16 @@
     <p class="text-lg md:text-2xl text-base-content/70 mb-5 max-w-3xl">
         Calculate the area under the curve of your datasets, maximizing <br>server-side performance.
     </p>
-    
-    <a href="{% url 'calculator:index' %}" class="btn btn-primary btn-lg btn-wide shadow-xl text-base-200 mb-7">
-        Start to calculate
-    </a>
+
+    <div class="flex gap-4 justify-center">
+        <a href="{% url 'calculator:index' %}" class="btn btn-primary btn-lg btn-wide shadow-xl text-base-200 mb-7">
+            Start to calculate
+        </a>
+        <a href="{% url 'calculator:dashboard' %}" class="btn btn-soft btn-primary btn-lg btn-wide shadow-xl hover:text-white mb-7">
+            Go to Dashboard
+        </a>
+    </div>
+
 
     <p class="text-sm text-base-content/70 ">
         WARNING: This software is for educational purposes only and is not a substitute for a professional clinical diagnosis.

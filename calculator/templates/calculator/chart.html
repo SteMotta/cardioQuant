@@ -104,11 +104,52 @@
           min: 0
         },
 
+          tooltip: {
+                trigger: 'axis',
+                axisPointer: { type: 'cross', crossStyle: { color: '#999' } },
+                formatter: params => {
+                    const line = params.find(p =>
+                        p.seriesId === 'curve' &&
+                        Array.isArray(p.value) &&
+                        p.value[0] !== undefined &&
+                        p.value[1] !== undefined
+                    );
+                    if (!line) return '';
+                    return `
+                        <div style="display:flex; flex-direction:column; gap:4px;">
+                            <div style="display:flex; align-items:center; gap:6px;">
+                                <span style="display:inline-block; width:10px; height:10px;
+                                             border-radius:50%; background:#999;"></span>
+                                t = ${line.value[0].toFixed(3)} s
+                            </div>
+                            <div style="display:flex; align-items:center; gap:6px;">
+                                <span style="display:inline-block; width:10px; height:10px;
+                                             border-radius:50%; background:#5e81ac;"></span>
+                                V = ${line.value[1].toFixed(3)} mV
+                            </div>
+                        </div>
+                    `;
+                }
+            },
+
+        legend: {
+            top: 4,
+            right: 16,
+            itemWidth: 14,
+            itemHeight: 14,
+            textStyle: { fontSize: 12 },
+            data: [
+                { name: 'ECG',         icon: 'circle' },
+                { name: 'Rectangle',  icon: 'rect'   },
+            ]
+        },
+
         series: [
           // 1. Rettangoli
           {
               type: 'custom',
               id: 'shapes',
+              name: 'Rectangles',
               z: 2,
               data: [],
               renderItem: renderRect
@@ -119,6 +160,7 @@
             type: 'line',
             smooth: true,
             id: 'curve',
+            name: 'ECG',
             showSymbol: false,
             sampling: 'lttb',
             z: 10,
@@ -197,12 +239,35 @@
       // --- Cambio metodo ---
       function setMethod(method) {
         const config = {
-            Rectangles: { data: rects, renderItem: renderRect },
-            Trapezius:  { data: traps, renderItem: renderTrap },
-            Simpson:    { data: simpson, renderItem: renderSimpson },
+            Rectangles: {
+                data: rects,   renderItem: renderRect,
+                color: '#3498db'  // colore opaco per legenda e bordo
+            },
+            Trapezius: {
+                data: traps,   renderItem: renderTrap,
+                color: '#27ae60'
+            },
+            Simpson: {
+                data: simpson, renderItem: renderSimpson,
+                color: '#d4bc41'
+            },
         };
         myChart.setOption({
-          series: [{ id: 'shapes', ...config[method] }]
+            legend: {
+                data: [
+                    { name: 'ECG',    icon: 'circle' },
+                    { name: method,   icon: 'rect',
+                      itemStyle: { color: config[method].color } },
+                ]
+            },
+            color: [config[method].color, '#5e81ac'],  // [shapes, curva ECG]
+            series: [{
+                id: 'shapes',
+                name: method,
+                data: config[method].data,
+                renderItem: config[method].renderItem,
+                itemStyle: { color: config[method].color }
+            }]
         });
         formulaEl.textContent = formula[method];
         resultEl.textContent = integrals[method].toFixed(4);
@@ -212,14 +277,16 @@
       setMethod('{{ requested_method }}');
 
       {% if calc_id %}
-          document.getElementById('rect-button-{{ calc_id }}').addEventListener('click', () => setMethod('Rectangles'));
-          document.getElementById('trap-button-{{ calc_id }}').addEventListener('click', () => setMethod('Trapezius'));
-          document.getElementById('simpson-button-{{ calc_id }}').addEventListener('click', () => setMethod('Simpson'));
+        const collapseContent = chartDom.closest('.collapse-content');
+        collapseContent.querySelector('input[aria-label="Rectangles"]').addEventListener('change', () => setMethod('Rectangles'));
+        collapseContent.querySelector('input[aria-label="Trapezius"]').addEventListener('change', () => setMethod('Trapezius'));
+        collapseContent.querySelector('input[aria-label="Simpson"]').addEventListener('change', () => setMethod('Simpson'));
       {% else %}
-          document.getElementById('rect-button').addEventListener('click', () => setMethod('Rectangles'));
-          document.getElementById('trap-button').addEventListener('click', () => setMethod('Trapezius'));
-          document.getElementById('simpson-button').addEventListener('click', () => setMethod('Simpson'));
+          document.getElementById('rect-button').addEventListener('change', () => setMethod('Rectangles'));
+          document.getElementById('trap-button').addEventListener('change', () => setMethod('Trapezius'));
+          document.getElementById('simpson-button').addEventListener('change', () => setMethod('Simpson'));
       {% endif %}
+
       // 5. Rendi il grafico responsivo
       // Poiché Tailwind usa il flexbox/grid, assicuriamoci che ECharts si adatti se la finestra cambia dimensione
       window.addEventListener('resize', () => myChart.resize());

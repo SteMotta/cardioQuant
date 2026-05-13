@@ -9,6 +9,8 @@ class Dataset(models.Model):
     time_values   = models.JSONField(help_text="Lista dei valori di tempo [0, 0.02, ...]")
     voltage_values = models.JSONField(help_text="Lista dei valori di tensione [0, 0.1, ...]")
     created_at    = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_modified = models.BooleanField(default=False)
 
     class Meta:
         ordering = ['-created_at']

@@ -47,7 +47,6 @@ def _get_time_step(csv_data, time_column):
 def _csv_check(csv_file):
     try:
         csv_data = pd.read_csv(io.BytesIO(csv_file), on_bad_lines='error', sep=";", decimal=",")
-        print(len(csv_data.columns))
     except pd.errors.ParserError:
         return HttpResponse(status=422, content="Error: CSV file not valid")
 
@@ -206,6 +205,89 @@ def delete_dataset(request, pk):
     response = HttpResponse(status=204)
     response['HX-Trigger'] = 'delete-collapse'
     return response
+
+@login_required
+@require_POST
+def update_dataset(request, calc_id):
+    dataset = get_object_or_404(Dataset, id=calc_id, user=request.user)
+
+    try:
+        voltage_values = json.loads(request.POST.get('voltage_values', '[]'))
+        integral_type = request.POST.get('integral_type', 'Rectangles')
+    except json.JSONDecodeError:
+        return HttpResponse("Error: Invalid data", status=400)
+
+    # Tempi immutabili: li prende direttamente dal database
+    time_values = dataset.time_values
+
+    if len(voltage_values) != len(dataset.voltage_values):
+        return HttpResponse("Error: Cannot add or remove values", status=422)
+
+    try:
+        T = np.array(time_values, dtype=float)
+        V = np.array(voltage_values, dtype=float)
+    except (TypeError, ValueError):
+        return HttpResponse("Error: All values must be numeric", status=422)
+
+    mV_max = 10.0  # mV
+
+    if np.any(V > mV_max):
+        return HttpResponse(f"Error: Voltage values cannot exceed {mV_max} mV", status=422)
+
+    # Controlli solo su V, T è già validato
+    if np.any(V < 0):
+        return HttpResponse("Error: Values cannot be negative", status=422)
+
+    if V[-1] != 0:
+        return HttpResponse("Error: Last voltage value must be 0", status=422)
+
+    h = dataset.step
+
+    dataset.time_values    = T.tolist()
+    dataset.voltage_values = V.tolist()
+    dataset.is_modified = True
+    dataset.save()
+
+    df = pd.DataFrame({'time': time_values, 'voltage': voltage_values})
+    curve, v_max = _get_curve(df, 'voltage', 'time')
+    rects,  rects_result  = _rectangle_method(df, h, 'voltage', 'time')
+    traps,  traps_result  = _trapezius_method(df, h, 'voltage', 'time')
+    simps,  simps_result  = _simpson_method(df, h, 'voltage', 'time')
+
+    calc = dataset.calculation
+    calc.curve = curve
+    calc.v_max = v_max
+    calc.rects = rects
+    calc.trapezius = traps
+    calc.simpson = simps
+    calc.result_rectangles = rects_result
+    calc.result_trapezius  = traps_result
+    calc.result_simpson    = simps_result
+    calc.save()
+
+    context = {
+        'calc_id':          calc.id,
+        'rects':            json.dumps(rects),
+        'trapezius':        json.dumps(traps),
+        'simpson':          json.dumps(simps),
+        'curve':            json.dumps(curve),
+        'rects_result':     rects_result,
+        'trapezius_result': traps_result,
+        'simpson_result':   simps_result,
+        'v_max':            v_max,
+        'requested_method': integral_type,
+    }
+    response = render(request, 'calculator/chart.html', context)
+    response['X-Average'] = str(round((rects_result + traps_result + simps_result) / 3, 4))
+    response['X-Dataset-Updated'] = 'true'
+    return response
+
+def _is_step_list(time_values: list, tol: float = 1e-9) -> bool:
+    t = np.array(time_values)
+    if len(t) < 2:
+        return False
+    diffs = np.diff(t)
+    return bool(np.all(np.abs(diffs - diffs[0]) < tol))
 
 def _is_step(data_frame, time_column):
     step = data_frame[time_column][1]
